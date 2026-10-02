@@ -1,0 +1,12 @@
+[
+  {
+    "name": "CRLoader-1.0.0",
+    "archive": "reference/archives/CONTROL_Resonant_loader 1.0.0 9 1.0.0 2026-09-24T19-19Z SEDl9mA5X.zip",
+    "sha256": "02bc488b22904bb08c378744be2e5b082e04e691957f51003ca84dd0b4290369"
+  },
+  {
+    "name": "CRModMenu-1.7.0",
+    "archive": "reference/archives/ModMenu 1.7.0 35 1.7.0 2026-10-02T09-34Z CYiofvQew.zip",
+    "sha256": "ecfcadb439c21b5c8c3bc874a47673a34faa7c6b8ff7eacf52bbc551419e6d67"
+  }
+]

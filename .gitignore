@@ -1,0 +1,9 @@
+build/
+reference/
+installations/
+analysis/
+__pycache__/
+*.pyc
+*.log
+.pi/*
+!.pi/skills/

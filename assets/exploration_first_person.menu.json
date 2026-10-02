@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "exploration_first_person",
+  "name": "Exploration First Person (Prototype)",
+  "version": "0.2.3-preview",
+  "dll": "ExplorationFirstPerson.dll",
+  "options": [
+    {"id":"enabled","type":"toggle","label":"Enabled","default":true,"description":"Double-tap RS outside combat to toggle the experimental close camera. Double-tap again to return.\n\nCombat/protected states return to the original camera. Calibrated exploration view; eye ownership, wall handling, character clipping and combat detection still need validation."},
+    {"id":"pad_button","type":"key","device":"pad","context":"gameplay","conflict":"warn","label":"Controller button (double-tap)","default":267,"description":"Uses Steam Input's Xbox layout. Single clicks still reach the game. Shared bindings can trigger their normal action."},
+    {"id":"prototype_distance","type":"slider","label":"Camera distance offset (m)","default":-6.3,"min":-12,"max":0,"step":0.05,"description":"Negative values move the camera forward from the game's third-person position. Adjust gradually: try -5, then -6 if -4 is still behind the character. Do not jump directly to -12.\n\nThis is a calibration preview, not a validated player-eye anchor. If the camera crosses the character or walls, move this value closer to zero."},
+    {"id":"eye_height","type":"slider","label":"Camera height offset (m)","default":-0.2,"min":-0.5,"max":0.5,"step":0.05,"description":"Raises or lowers the close camera. Character visibility is not yet modified."},
+    {"id":"eye_side","type":"slider","label":"Camera side offset (m)","default":0,"min":-1,"max":1,"step":0.05,"description":"Adjusts left/right placement. Tune it together with distance. The correct eye position depends on the native camera."},
+    {"id":"eye_forward","type":"slider","label":"Fine forward offset (m)","default":-0.05,"min":-0.3,"max":0.3,"step":0.05,"description":"Positive values move the close camera farther forward. Prototype switches are immediate."},
+    {"id":"keyboard_key","type":"key","device":"keyboard","context":"gameplay","conflict":"warn","label":"Keyboard fallback (double-tap)","default":75,"description":"Double-tap K by default. Set Unbound to use only the controller."},
+    {"id":"double_tap_ms","type":"slider","label":"Double-tap window (ms)","default":350,"min":150,"max":800,"step":10,"description":"Maximum time between completed clicks."},
+    {"id":"max_tap_ms","type":"slider","label":"Maximum click duration (ms)","default":250,"min":50,"max":500,"step":10,"description":"Longer holds do not count as clicks."},
+    {"id":"min_gap_ms","type":"slider","label":"Minimum click gap (ms)","default":40,"min":10,"max":100,"step":10,"description":"Rejects button bounce between clicks."},
+    {"id":"debug","type":"toggle","label":"Diagnostic logging","default":false,"description":"Logs state changes and recognized gestures. No raw controller identifiers are recorded."}
+  ]
+}
