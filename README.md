@@ -1,57 +1,83 @@
 # CONTROL Resonant — Exploration First Person
 
-## Anchored preview: 0.3.0
+Explore CONTROL Resonant in first person. Double-tap the right stick or **K** to switch views. Combat returns you to third person; switch back manually afterward.
 
-A Windows x64 exploration-camera mod using CRLoader 1.0.0, CRModMenu 1.7.0, and Steam Input's Xbox layout.
-The user confirmed the preceding offset view. This prototype now places the view relative to the player-following anchor instead of the retracted third-person position; live testing of the new placement is pending.
+**[Download the latest release](https://github.com/cris7ian/control-resonant-first-person/releases/latest)** · **[Report a bug](https://github.com/cris7ian/control-resonant-first-person/issues)**
 
-- Double-tap **RS/R3** or **K** in exploration or non-nested `story` areas to toggle the view.
-- Combat clears the request. Double-tap again after combat; it never resumes automatically.
-- Protected menus suspend the override. Focus loss clears the request.
-- Change calibration in **Options → MODS → Exploration First Person (Prototype)**.
+## Requirements
 
-Defaults: **distance −6.35, height −0.15, side 0, fine forward −0.05**.
-Distance now calibrates a fixed 6-unit reference, with range **−7 to −5**. Combined local offsets must stay within a 1.25-unit budget.
-Updates preserve existing settings. The native defaults and menu reset values use the same calibration.
+- Windows x64 and the supported Steam build of CONTROL Resonant.
+- [CRLoader 1.0.0](https://www.nexusmods.com/controlresonant/mods/9) and [CRModMenu 1.7.0](https://www.nexusmods.com/controlresonant/mods/35), installed separately.
+- For controller input: Steam Input enabled with an **Xbox layout**.
 
-**This remains an experimental anchor-based preview, not a validated player-eye camera.**
-Native boom shortening is no longer used for final placement. The native update and collision history still run unchanged.
-Short eye-segment collision, visibility, camera ownership, and full combat coverage remain unvalidated.
-Exact `story` state is newly allowed; active dialogue that retains `story` and mode 0 cannot yet be distinguished reliably. Detected protected states remain blocked.
-FOV remains native. Geometry logging reports `anchor_valid`, `anchor_used`, and position-write results.
-Enable **Diagnostic logging** for the short [wall test](docs/CAMERA.md). Toggle off or disable Enabled if the view clips or behaves incorrectly.
-Set `camera_writes=0` in the installed safety INI and restart for diagnostic-only operation.
+**Disable BetterCamera and other camera-override mods.** They can conflict with this mod's camera hook.
+
+Game updates can change compatibility. The mod checks the executable and refuses camera hooks on unsupported builds. See [compatibility details](docs/INSTALLATION.md#supported-game-build).
 
 ## Install
 
-Close the game. From this repository:
+**Close the game before installing or updating.** Do not replace DLLs while it is running.
 
-```powershell
-python scripts/install.py           # build, test, stage, dry run
-python scripts/install.py --apply   # verified, backed-up installation
+1. Install CRLoader and CRModMenu using their authors' instructions.
+2. Download `control-resonant-first-person-0.3.0-windows-x64.zip` from [Releases](https://github.com/cris7ian/control-resonant-first-person/releases).
+3. Extract the ZIP into a temporary folder outside the game directory.
+4. In Steam, open the game's **Properties → Installed Files → Browse**.
+5. Copy the extracted `crmods/ExplorationFirstPerson` folder into the game's `crmods` folder.
+6. Launch the game through Steam.
+
+The result should look like this:
+
+```text
+CONTROL Resonant/
+├── CONTROLResonant.exe
+├── winmm.dll                         ← CRLoader, downloaded separately
+└── crmods/
+    ├── CRModMenu/                    ← downloaded separately
+    └── ExplorationFirstPerson/
+        ├── ExplorationFirstPerson.dll
+        ├── ExplorationFirstPerson.ini
+        ├── exploration_first_person.menu.json
+        ├── MinHook-LICENSE.txt
+        ├── THIRD-PARTY-NOTICES.md
+        └── licenses/
 ```
 
-Requires Windows x64, Python 3.10+, CMake, Ninja, WinLibs GCC/G++, and hash-pinned local dependency ZIPs.
-See [installation](docs/INSTALLATION.md) for archive locations, alternate game paths, compiler paths, and receipt-based rollback.
-The helper preserves the executable and calibration settings. It never changes game archives, saves, or `steam_api64.dll`.
-Keep BetterCamera disabled: both mods would own the same camera hook.
+The release ZIP includes this mod only. You do **not** need Python, CMake, or a compiler to install it.
 
-The repository install skill is `.pi/skills/install-control-resonant/SKILL.md`.
-Start Pi in this repository and use `/skill:install-control-resonant`; use `/reload` after skill changes.
+**Updating?** Back up the existing mod folder first. Keep your existing `ExplorationFirstPerson.ini` and `ModMenuConfig` folder. Replace the DLL, menu descriptor, and notices only.
 
-## Project
+See [installation, troubleshooting, and removal](docs/INSTALLATION.md) for details.
 
-- [Testing and calibration](docs/TESTING.md)
-- [Installation and rollback](docs/INSTALLATION.md)
-- [Evidence and limitations](docs/ANALYSIS.md)
-- [Implementation plan and release gates](docs/PLAN.md)
-- [Camera collision and FOV investigation](docs/CAMERA.md)
-- [Change history](docs/CHANGELOG.md)
-- `src/`, `tests/`, `scripts/`: implementation and verification.
-- `assets/dependencies.json`: pinned loader/menu archive hashes; no downloaded binaries are committed.
-- `third_party/minhook/`: MinHook 1.3.4 source and license.
-- `reference/`, `analysis/`, `build/`, `installations/`: ignored local research, generated output, and rollback data.
+## Controls and settings
 
-Default game folder: `G:\SteamLibrary\steamapps\common\CONTROL Resonant`.
-The helper records the latest local receipt in `analysis/latest-installation.json`. Undo updates newest first.
-Downloaded dependency redistribution permissions remain unverified; packaging is for this user's local installation.
+| Action | Default |
+| --- | --- |
+| Toggle first person | Double-tap **RS/R3** or **K** |
+| Open settings | **Options → MODS → Exploration First Person (Prototype)** |
+| Return to third person | Double-tap again, or disable **Enabled** |
+
+Release the button between taps. Complete the second tap within **350 ms**; holding the button does not toggle.
+
+- Toggle in exploration and ordinary story areas, including dialogue-capable locations.
+- Combat clears first-person intent. It does **not** automatically resume after combat.
+- Protected menus suspend the camera override. Changing window focus clears first-person intent.
+- Native field of view (FOV) remains unchanged.
+
+The default calibration is **distance −6.35, height −0.15, side 0, fine forward −0.05**. Adjust it in the mod menu. Positive fine forward moves the view forward; negative moves it backward. Distance uses a fixed reference, not the current collision-shortened camera boom.
+
+## Known limitations
+
+This is an early, anchor-based camera mod, not a head-bone camera or a combat first-person overhaul. The 0.3.0 build was confirmed working in live play after wall and story-area testing.
+
+- Native camera collision still runs, but there is no separate collision sweep for the final eye position. Wall or body clipping remains possible.
+- The mod does not hide the player's head or body.
+- Active conversations that retain the ordinary story camera state are not reliably distinguishable. Toggle off if a conversation camera is affected.
+- Combat and protected-state detection cannot guarantee coverage of every encounter or scripted sequence.
+
+If the camera behaves incorrectly, toggle off or disable **Enabled**. See the [diagnostic safety switch](docs/INSTALLATION.md#disable-camera-writes).
+
+## Development
+
+See [developer documentation](docs/DEVELOPMENT.md) for building, testing, reversible local installation, and release packaging. See [change history](docs/CHANGELOG.md) for previous versions.
+
+CRLoader and CRModMenu remain separate downloads. MinHook and compiler-runtime notices are included; see [third-party notices](THIRD-PARTY-NOTICES.md). No project-wide source license has been selected.

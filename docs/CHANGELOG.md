@@ -1,6 +1,12 @@
 # Change history
 
-## 0.3.0 — anchored placement and story-area toggles
+## 0.3.0 — first public release
+
+- Confirm working anchored placement and story-area toggles through user live testing.
+- Publish a mod-only Windows x64 ZIP with checksums, default assets, documentation, and third-party notices.
+- Keep CRLoader and CRModMenu as separate downloads linked from their Nexus pages.
+- Replace development plans and research notes with user installation guidance and maintained developer documentation.
+- Add repository guidance, CI checks, and a separate public release builder.
 
 - Derive position from the matched player-following input anchor, not the shortened third-person boom.
 - Preserve the free-space calibration with fixed reference boom 6.0, height 0.05, and side 0.10.
@@ -8,7 +14,7 @@
 - Bound combined local calibration to 1.25 units and distance to −7…−5. Invalid inputs/configurations fail closed; no legacy fallback.
 - Allow exact non-nested story states in mode 0, while retaining combat and detected protected-state guards.
 - Add anchor/write telemetry and focused geometry/story regression checks.
-- Keep native collision update/history, FOV, and visibility unchanged. Short eye collision and conversations retaining story/mode 0 remain live-test gaps.
+- Keep native collision update/history, FOV, and visibility unchanged. A separate eye collision sweep is not implemented; conversations retaining story/mode 0 remain ambiguous.
 
 ## 0.2.4 — wall-retraction diagnostics
 
@@ -16,7 +22,7 @@
 - Report native/requested positions and actual position-write status, at most twice per second.
 - Keep geometry publication nonblocking and preserve the original native call and camera math.
 - Add the free-space versus wall test and collision/FOV evidence notes.
-- Do not change collision, native history, FOV, calibrated defaults, or existing settings. Live geometry correlation remains pending.
+- Do not change collision, native history, FOV, calibrated defaults, or existing settings. Subsequent wall-test recordings informed 0.3.0 anchored placement.
 
 ## 0.2.3 — calibrated baseline and repeatable installation
 

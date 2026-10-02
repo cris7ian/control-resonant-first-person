@@ -1,3 +1,4 @@
 * text=auto eol=lf
 *.ini text eol=crlf
 third_party/minhook/** -whitespace
+licenses/** -whitespace
