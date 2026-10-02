@@ -57,5 +57,7 @@ Ask them to test RS toggles outside combat and manual reactivation after combat.
 This is an anchored prototype, not a validated head-bone/eye-collision implementation. Native update/history remain unchanged.
 For 0.3.1, ask the user to test both transition directions, FOV adjustment, native sprint effects, and immediate combat/focus returns.
 Check `Scoped FOV` logs for a matching positioned render camera. FOV failure must not block position transitions.
-Transitions are user-confirmed; the corrected FOV path is not. Do not promote the pre-release until actual FOV changes are confirmed.
-The original installed preview's log contained no successful FOV writes. Do not treat its positive transition feedback as FOV validation.
+Corrected 0.3.1 transitions and FOV are user-confirmed. Live telemetry also recorded matched writes for 100° and 120° settings.
+The tested release code is on main; published tags and assets remain unchanged.
+The original installed preview's log contained no successful FOV writes. Use the corrected release, not that earlier build.
+Live confirmation does not establish universal native-effect, clipping, or scripted-state coverage.

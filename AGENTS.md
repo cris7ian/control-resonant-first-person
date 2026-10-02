@@ -59,5 +59,6 @@ The repository installation skill is .pi/skills/install-control-resonant/SKILL.m
 - Do not select or change the project's own license without the owner's approval.
 - Verify before publishing. Review the newest live logs before clearing them; archive them under ignored analysis/ with the game closed.
 - User-confirmed transitions do not establish FOV application. A release with corrected, unconfirmed native behavior must state that limitation and remain a pre-release.
-- Keep main at the stable release while publishing experimental feature-branch tags. Do not rewrite published history or force-push without explicit approval.
+- Keep unconfirmed camera changes on feature branches. After explicit live confirmation, merge the tested release code into main and update validation notes.
+- Do not move published tags or replace release assets just to record later live confirmation. Do not rewrite published history or force-push without explicit approval.
 - Do not add co-author trailers, bot signatures, or authorship attribution to Git metadata.

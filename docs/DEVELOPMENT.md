@@ -28,8 +28,9 @@ The 0.3.0 geometry replay passed all 123 captured wall-test samples. The user th
 Neither result proves complete camera ownership, eye collision, dialogue exclusion, or every combat transition.
 
 For camera changes, test a wall behind the player, walking, pitching, stairs, both toggle directions, story areas, active conversation, combat rollback, and focus loss.
-Stable 0.3.0 retains native FOV. The user confirmed 0.3.1 transitions in live play.
-The original installed preview logged no successful FOV writes. The pre-release corrects the render-stage lifetime check; FOV retesting remains pending.
+Stable 0.3.0 retains native FOV. The user confirmed corrected 0.3.1 transitions and FOV in live play.
+The original installed preview logged no successful FOV writes. After the lifetime fix, live telemetry recorded matched writes for 100° and 120° settings.
+The user then confirmed the corrected release works. Its tested code is merged into main; published tags and assets remain unchanged.
 Do not claim real FOV application, native effects, render matching, or full sprint/conversation coverage solely because automated checks pass.
 
 ## Implementation map
@@ -116,7 +117,8 @@ At completed exit or safety interruption, the next original render build supplie
 Change-only `Scoped FOV` logs report matching/rejection even without debug. Optional geometry includes native/output FOV and blend at most twice per second.
 Rejected frames omit unmeasured angles rather than reporting zero-initialized values as 0 degrees. Disable diagnostic logging during normal play.
 Owned-record tests cover expired stack queries, unrelated cameras, ambiguous matches, no-op projection rebuilding, mixed ABI, native FOV deltas, and safety returns.
-These mocks and static evidence do not establish live FOV application. Publish 0.3.1 as a pre-release; keep stable main at 0.3.0 until retesting.
+Mocks and static evidence alone do not establish live FOV application. Corrected 0.3.1 now has matched live telemetry and explicit user confirmation.
+This clears the main-branch merge gate, not the remaining ownership, clipping, native-effect, or scripted-state coverage limitations.
 
 ## Reversible local installation
 

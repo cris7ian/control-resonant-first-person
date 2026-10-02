@@ -56,7 +56,7 @@ Get-FileHash .\CONTROLResonant.exe -Algorithm SHA256
 ```
 
 The native adapter verifies the executable and expected hook signatures before installing hooks.
-Version 0.3.1 is a pre-release with user-confirmed transitions and an experimental FOV correction. Stable 0.3.0 remains available.
+Version 0.3.1 has user-confirmed transitions and corrected FOV. Its existing download retains the pre-release label; stable 0.3.0 remains available.
 After a game update, an unsupported executable leaves the camera untouched. Do not bypass the compatibility gate.
 
 ## Troubleshooting
@@ -87,8 +87,9 @@ Disable **Custom first-person FOV** to retain native FOV without disabling smoot
 Set transition duration to `0` for immediate manual toggles. Combat, focus loss, and protected-state returns remain immediate.
 Changing settings clears intent; leave the menu and double-tap again.
 If FOV does not change, inspect `Scoped FOV` logs. Unmatched render cameras retain native FOV, but position transitions remain available.
-Transition behavior is user-confirmed. The first installed preview applied no custom FOV in the captured session.
-This pre-release fixes an expired stack-query check; the corrected FOV path, native effects, and render matching still need live retesting.
+The first installed preview applied no custom FOV in the captured session. The released correction fixes an expired stack-query check.
+The user confirmed corrected transitions and FOV; live logs also recorded matched writes for 100° and 120° settings.
+This does not guarantee every native FOV effect or scripted camera sequence.
 
 ### The view clips or affects a conversation
 

@@ -15,7 +15,8 @@
 - Add regressions for expired queries, unrelated cameras, ambiguity, no-op FOV, forwarding, native effects, and immediate safety restoration.
 - Do not log unmeasured FOV as zero degrees on rejected frames. Add a documentation ZIP-version regression and native lifetime guidance in AGENTS.md.
 - Fix actual release repeatability by preserving the input PE timestamp during GNU strip. Verify repeated real ZIPs, not only mocked stripping.
-- Publish as a pre-release because the corrected FOV path still needs live retesting. Stable 0.3.0 remains unchanged.
+- Initially publish as a pre-release pending corrected FOV retesting. Subsequent live logs record matched writes for 100° and 120° settings.
+- The user then confirms the corrected release works. Merge the tested code into main and record that confirmation without moving tags or replacing published assets. Stable 0.3.0 remains available.
 
 ## 0.3.0 — first public release
 

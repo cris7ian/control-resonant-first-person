@@ -4,7 +4,7 @@ Explore CONTROL Resonant in first person. Double-tap the right stick or **K** to
 
 **[Download 0.3.1 pre-release](https://github.com/cris7ian/control-resonant-first-person/releases/tag/v0.3.1)** · **[Stable 0.3.0](https://github.com/cris7ian/control-resonant-first-person/releases/tag/v0.3.0)** · **[Report a bug](https://github.com/cris7ian/control-resonant-first-person/issues)**
 
-**0.3.1 pre-release:** fast eased transitions are user-confirmed in live play. The corrected, optional first-person FOV path still needs live retesting.
+**0.3.1:** fast eased transitions and the corrected, optional first-person FOV are user-confirmed in live play. The tested release code is now on `main`; the existing download retains its pre-release label.
 
 ## Requirements
 
@@ -74,9 +74,9 @@ The default calibration is **distance −6.35, height −0.15, side 0, fine forw
 
 ## Known limitations
 
-This is an early, anchor-based camera mod, not a head-bone camera or a combat first-person overhaul. The 0.3.0 placement baseline and 0.3.1 transitions are user-confirmed in live play.
+This is an early, anchor-based camera mod, not a head-bone camera or a combat first-person overhaul. The 0.3.0 placement baseline and corrected 0.3.1 transitions/FOV are user-confirmed in live play.
 
-- The first installed 0.3.1 preview retained native FOV because its lifetime check rejected every captured FOV write. This pre-release corrects that check; actual FOV application and native FOV effects still need live confirmation.
+- Live confirmation does not establish complete camera ownership or coverage of every native FOV effect and scripted sequence.
 
 - Native camera collision still runs, but there is no separate collision sweep for the final eye position. Wall or body clipping remains possible.
 - The mod does not hide the player's head or body.
