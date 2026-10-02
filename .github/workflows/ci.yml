@@ -50,3 +50,5 @@ jobs:
         run: |
           ctest --test-dir build --output-on-failure
           python -m unittest discover -s tests -p '*_tests.py'
+      - name: Verify real stripped release artifacts
+        run: python tests/release_artifact_integration.py --build build --strip-tool strip

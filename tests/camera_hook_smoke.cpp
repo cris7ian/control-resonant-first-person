@@ -8,6 +8,7 @@
 namespace {
 int calls{},projection_calls{},setter_calls{};
 float* output{};
+float native_boom=6;
 const void* expected_frame{};
 efp::Millis tick=1000;
 bool focused=true,late_safety=false,late_output=false;
@@ -19,7 +20,7 @@ void near(float a,float b,const char* message) { check(std::abs(a-b)<0.0001f,mes
 std::uintptr_t fake_original(void*,std::uintptr_t a2,std::uintptr_t a3,std::uintptr_t a4,std::uintptr_t a5,
     std::uintptr_t a6,std::uintptr_t a7,std::uintptr_t a8,std::uintptr_t a9,std::uintptr_t a10) {
     check(a2==2 && a3==3 && a4==4 && a5==5 && a6==6 && a7==7 && a8==8 && a9==9 && a10==10,"argument forwarding changed");
-    ++calls;output[9]=0;output[10]=0;output[11]=6;return 12345;
+    ++calls;output[9]=0;output[10]=0;output[11]=native_boom;return 12345;
 }
 void fake_projection(void* camera,const void* transform,float* fov,float aspect) {
     ++projection_calls;check(transform==expected_frame,"projection transform argument changed");
@@ -89,6 +90,13 @@ int main() {
         near(project(),95.0f*std::numbers::pi_v<float>/180,"exit FOV midpoint");
         tick+=90;efp::publish_camera_control(false,tick,settings,true);camera();near(output[11],6,"exit native endpoint");near(project(),native_fov,"exit did not restore native FOV");
         settings.transition_ms=0;efp::publish_camera_control(true,tick,settings,true);camera();near(output[11],(*target)[2],"instant mode changed placement");
+        // Exercise actual hook output while the original supplies different collision-shortened booms.
+        for (float boom : {0.6f,1.0f,3.3f,6.0f,6.4f}) {
+            native_boom=boom;camera();
+            near(efp::latest_camera_telemetry().native_position[2],boom,"fake native boom did not change");
+            for (unsigned i=0;i<3;++i) near(output[9+i],(*target)[i],"native retraction moved the first-person endpoint");
+        }
+        native_boom=6;camera();
         project();const int setters_before=setter_calls;
         output[9]+=2;near(project(),native_fov,"unmatched camera got FOV override");check(setter_calls==setters_before,"unmatched camera called setter");
         camera();

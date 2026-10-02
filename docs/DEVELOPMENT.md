@@ -21,7 +21,9 @@ Non-Windows builds run the portable core tests but do not produce the game DLL.
 - Core tests cover input gestures, policy, settings, coherent state snapshots, and anchored geometry.
 - Native startup smoke tests verify unsupported-host fail-closed behavior, not game compatibility.
 - Camera-hook smoke tests use owned records and a fake original function to check forwarding and guarded writes.
-- Python tests cover deployment, dependency checks, asset staging, configuration preservation, and release packaging.
+- Fast Python tests cover deployment, dependency checks, asset staging, configuration preservation, and release rejection gates.
+- `tests/release_tests.py` models PE data and mocks strip for fast failure injection; it does not prove real stripping or repeatability.
+- `tests/release_artifact_integration.py` verifies a real Windows DLL with GNU strip and the native smoke host in temporary directories.
 - `efp_geometry_replay` reads whitespace-separated anchor, secondary, native-position, and direction triples through standard input. Recordings remain local.
 
 The 0.3.0 geometry replay passed all 123 captured wall-test samples. The user then confirmed the installed build works in live play.
@@ -172,8 +174,20 @@ python scripts/release.py --build build
 The builder requires a clean Git tree, a Windows x64 DLL matching the project version, and GNU `strip` on PATH.
 Use `--strip-tool "<toolchain>/bin/strip.exe"` to select the tool explicitly.
 It strips a temporary copy, checks that runtime sections are unchanged, and leaves the original build untouched.
-Set `SOURCE_DATE_EPOCH` to the input DLL's PE timestamp for GNU strip; otherwise BFD rewrites that timestamp from wall-clock time.
-Verify repeat packaging with the real strip tool across different seconds, not only mocked strip calls.
+The release helper sets `SOURCE_DATE_EPOCH` to the input DLL's PE timestamp; otherwise GNU BFD rewrites it from wall-clock time.
+Run the separate real-artifact check after building the Windows x64 DLL:
+
+```powershell
+python tests/release_artifact_integration.py --build build --strip-tool strip
+```
+
+This check is separate from fast `*_tests.py` discovery and local installation checks. Windows CI runs it as a separate step.
+It verifies real debug removal, unchanged runtime sections, timestamp preservation, checksums, and identical ZIPs across different seconds.
+It also loads the stripped DLL in the unsupported-host smoke test. It never loads a DLL into the game.
+
+A historical timestamp on a temporary DLL copy exposes timestamp rewriting even when the original build timestamp matches the current second.
+Missing prerequisites fail the explicit check; there is no silent skip. Build with `RelWithDebInfo` and `BUILD_TESTING` enabled.
+Temporary test archives use an `integration-test` source marker and do not replace `build/releases` or any published assets.
 
 Output under `build/releases/` contains a mod-only ZIP and `SHA256SUMS.txt`.
 The ZIP includes default assets, documentation, third-party notices, and a hashed manifest tied to the source commit.

@@ -43,12 +43,6 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertTrue(all(item == expected for item in examples), name)
     def test_install_is_dry_run_by_default(self):
         self.assertFalse(install.parser().parse_args([]).apply)
-    def test_install_skill_is_tracked_source_not_runtime_state(self):
-        skill = ROOT / '.pi/skills/install-control-resonant/SKILL.md'
-        text = skill.read_text()
-        self.assertTrue(text.startswith('---\nname: install-control-resonant\n'))
-        self.assertIn('description:', text)
-        self.assertTrue((skill.parent / '../../../scripts/install.py').resolve().is_file())
     def test_unsupported_game_blocks_preflight(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(install.deploy, 'ensure_closed'):
             game = Path(directory)

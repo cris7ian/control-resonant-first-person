@@ -101,7 +101,6 @@ void geometry_tests() {
     for (float boom : {0.6f,1.0f,3.3f,6.0f,6.4f}) {
         Vec3 native{}; for (unsigned i=0; i<3; ++i) native[i] = free_anchor[i]-direction[i]*boom;
         CHECK(plausible_anchor(free_anchor,free_secondary,native));
-        CHECK(anchored_position(free_anchor,free_secondary,direction,settings) == free_target); // native retraction is not an input
     }
     // Recorded old free-space view, adjusted for the user's new height (+0.10).
     const Vec3 calibrated{273.838f,1.609f,141.351f};
@@ -152,8 +151,30 @@ void traversal_geometry_tests() {
         const auto expected = rotate(*floor_target);
         for (unsigned i=0;i<3;++i) CHECK(std::abs((*target)[i]-expected[i])<0.000001f);
         CHECK(plausible_anchor(anchor,rotated_secondary,rotate({0,0,0.6f}))); // boom retraction remains irrelevant
-        CHECK(anchored_position(anchor,rotated_secondary,rotate(forward),settings)==target);
     }
+    // Changing world location or direction magnitude must not change local placement.
+    const Vec3 translation{17,-3,9};
+    for (const Vec3 local_secondary : {secondary,Vec3{-0.25f,0,0},Vec3{0,0,0.25f}}) {
+        const Vec3 direction{0.6f,0,-0.8f};
+        const auto base=anchored_position(anchor,local_secondary,direction,settings);
+        CHECK(base.has_value());
+        Vec3 moved_secondary{},scaled_direction{};
+        for (unsigned i=0;i<3;++i) { moved_secondary[i]=local_secondary[i]+translation[i];scaled_direction[i]=direction[i]*1.5f; }
+        const auto moved=anchored_position(translation,moved_secondary,direction,settings);
+        const auto scaled=anchored_position(anchor,local_secondary,scaled_direction,settings);
+        CHECK(moved.has_value());CHECK(scaled.has_value());
+        for (unsigned i=0;i<3;++i) {
+            CHECK(std::abs((*moved)[i]-((*base)[i]+translation[i]))<0.00001f);
+            CHECK(std::abs((*scaled)[i]-(*base)[i])<0.000001f);
+        }
+    }
+    // Independently calculated endpoint: exercises non-default height/side/forward calibration.
+    auto calibrated=settings;calibrated.prototype_distance=-6.5f;calibrated.eye_height=0.2f;
+    calibrated.eye_side=-0.2f;calibrated.eye_forward=0.1f;
+    const auto calibrated_target=anchored_position(anchor,secondary,forward,calibrated);
+    CHECK(calibrated_target.has_value());
+    const Vec3 expected_calibration{0.1f,0.25f,-0.6f};
+    for (unsigned i=0;i<3;++i) CHECK(std::abs((*calibrated_target)[i]-expected_calibration[i])<0.000001f);
     const Vec3 wall_secondary{-0.25f,0,0}; // local up is +X
     const auto wall_target = anchored_position(anchor,wall_secondary,forward,settings);
     CHECK(wall_target.has_value());

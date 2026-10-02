@@ -1,4 +1,4 @@
-"""Public release payload, version, and strip safety checks; no game installation."""
+"""Fast release guards with modeled PE data; real GNU strip runs in release_artifact_integration.py."""
 from pathlib import Path
 import hashlib
 import json
@@ -82,22 +82,6 @@ class ReleaseTests(unittest.TestCase):
                 self.assertEqual(len(data), item['size'])
         self.assertEqual(checksum.read_text().split()[0], hashlib.sha256(archive_path.read_bytes()).hexdigest())
 
-    def test_deterministic_zip_and_original_build_preserved(self):
-        original = (self.build / 'ExplorationFirstPerson.dll').read_bytes()
-        first, _ = self.make()
-        fingerprint = hashlib.sha256(first.read_bytes()).hexdigest()
-        second, _ = self.make()
-        self.assertEqual(hashlib.sha256(second.read_bytes()).hexdigest(), fingerprint)
-        self.assertEqual((self.build / 'ExplorationFirstPerson.dll').read_bytes(), original)
-
-    def test_strip_preserves_input_pe_timestamp(self):
-        native = bytearray(fake_dll())
-        struct.pack_into('<I', native, 0x88, 1234567890)
-        (self.build / 'ExplorationFirstPerson.dll').write_bytes(native)
-        self.make()
-        environment = release.subprocess.run.call_args.kwargs['env']
-        self.assertEqual(environment['SOURCE_DATE_EPOCH'], '1234567890')
-
     def test_non_x64_binary_rejected(self):
         (self.build / 'ExplorationFirstPerson.dll').write_bytes(fake_dll(machine=0x14c))
         with self.assertRaisesRegex(ValueError, 'AMD64'):
@@ -121,6 +105,7 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual(archive.read(f'{release.MOD}/exploration_first_person.menu.json'), descriptor.encode('utf-8'))
 
     def test_stripped_runtime_changes_rejected(self):
+        original = (self.build / 'ExplorationFirstPerson.dll').read_bytes()
         def corrupt(command, **kwargs):
             dll = Path(command[-1])
             data = bytearray(dll.read_bytes())
@@ -130,6 +115,7 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'runtime sections'):
             self.make()
         self.assertFalse(list((self.build / 'releases').glob('*.zip')))
+        self.assertEqual((self.build / 'ExplorationFirstPerson.dll').read_bytes(), original)
 
     def test_malformed_pe_rejected(self):
         for image in (b'', b'not a DLL', fake_dll()[:180]):
