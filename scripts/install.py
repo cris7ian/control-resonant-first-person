@@ -89,7 +89,7 @@ def install(args: argparse.Namespace) -> Path | None:
         deploy.atomic_write(receipt_path, json.dumps(receipt, indent=2).encode())
     info = {'receipt': str(receipt_path) if receipt_path else previous.get('receipt'),
             'previous_receipt': previous.get('receipt') if receipt_path else previous.get('previous_receipt'),
-            'game': str(game), 'version': manifest['version'] + '-preview',
+            'game': str(game), 'version': manifest['version'],
             'verified_files': len(manifest['files']), 'game_executable_unchanged': True,
             'settings_preserved': True, 'note': 'Roll back updates newest first. Do not remove user-modified files.'}
     deploy.atomic_write(latest_path, json.dumps(info, indent=2).encode())

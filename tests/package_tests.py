@@ -23,7 +23,16 @@ class RepositoryContractTests(unittest.TestCase):
             raw = values[option['id']].strip()
             value = raw == 'true' if raw in ('true', 'false') else float(raw.rstrip('f'))
             self.assertEqual(option['default'], value, option['id'])
-        self.assertEqual(options['version'], package.project_version() + '-preview')
+        self.assertEqual(options['version'], package.project_version())
+    def test_confirmed_release_has_no_experimental_menu_labels(self):
+        menu = json.loads((ROOT / 'assets/exploration_first_person.menu.json').read_text())
+        self.assertEqual(menu['name'], 'Exploration First Person')
+        for option in menu['options']:
+            text = option.get('description', '').lower()
+            self.assertNotIn('experimental', text, option['id'])
+            self.assertNotIn('awaits live retesting', text, option['id'])
+        # Keep the old key so existing calibration is not lost when the menu is renamed.
+        self.assertIn('prototype_distance', {option['id'] for option in menu['options']})
     def test_documented_zip_examples_match_project_version(self):
         version = package.project_version()
         expected = f'control-resonant-first-person-{version}-windows-x64.zip'
@@ -69,6 +78,9 @@ class StagingTests(unittest.TestCase):
         self.replace_root.stop(); self.temp.cleanup()
     def test_stage_refreshes_assets_and_removes_stale_generated_files(self):
         target = package.stage(self.build)
+        manifest = json.loads((target / 'package-manifest.json').read_text())
+        self.assertEqual(manifest['version'], '0.2.3')
+        self.assertEqual(manifest['mode'], 'anchored_exploration_camera')
         (target / 'crmods/ExplorationFirstPerson/stale.runtime.js').write_text('must not ship')
         asset = self.root / 'assets/exploration_first_person.menu.json'
         descriptor = json.loads(asset.read_text()); descriptor['name'] = 'changed without rebuilding DLL'
@@ -93,5 +105,28 @@ class StagingTests(unittest.TestCase):
         manifest = json.loads((target / 'package-manifest.json').read_text())
         entry = next(item for item in manifest['files'] if item['path'] == rel)
         self.assertEqual(entry['sha256'], hashlib.sha256(safety.read_bytes()).hexdigest())
+
+    def test_stable_install_receipt_version_and_settings_preserved(self):
+        staging = package.stage(self.build)
+        game = self.root / 'game'
+        game.mkdir()
+        (game / 'CONTROLResonant.exe').write_bytes(b'test executable')
+        config = game / 'crmods/ExplorationFirstPerson/ModMenuConfig/exploration_first_person.ini'
+        config.parent.mkdir(parents=True)
+        config.write_text('[Settings]\nprototype_distance=-6.35\ndebug=0\n')
+        safety = config.parent.parent / 'ExplorationFirstPerson.ini'
+        safety.write_text('[Safety]\ncamera_writes=0\n')
+        before = (config.read_bytes(), safety.read_bytes())
+        args = install.parser().parse_args(['--game', str(game), '--build', str(self.build), '--apply'])
+        with patch.object(install, 'ROOT', self.root), patch.object(install, 'run'), \
+                patch.object(install, 'check_game', return_value=install.deploy.digest(game / 'CONTROLResonant.exe')), \
+                patch.object(install.package, 'stage', return_value=staging), \
+                patch.object(install.deploy, 'ensure_closed'):
+            receipt = install.install(args)
+        latest = json.loads((self.root / 'analysis/latest-installation.json').read_text())
+        self.assertEqual(latest['version'], '0.2.3')
+        self.assertEqual(json.loads(receipt.read_text())['version'], '0.2.3')
+        self.assertEqual((config.read_bytes(), safety.read_bytes()), before)
+        self.assertTrue(latest['settings_preserved'])
 
 if __name__ == '__main__': unittest.main()

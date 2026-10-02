@@ -18,7 +18,7 @@ struct CameraTelemetry {
 };
 // Diagnostic copies only; input vectors are candidates, not proven eye/pivot coordinates.
 CameraTelemetry latest_camera_telemetry();
-bool start_camera_prototype(std::uintptr_t module_base, const Log& log);
+bool start_camera_override(std::uintptr_t module_base, const Log& log);
 bool camera_record_recent();
 // allowed distinguishes a manual exit (ease out) from a safety interruption (immediate native output).
 void publish_camera_control(bool active, Millis state_observed, const Settings& settings, bool allowed = false);

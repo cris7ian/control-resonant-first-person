@@ -13,7 +13,7 @@
 namespace efp {
 namespace {
 // Ten integer/pointer arguments are forwarded in the same Win64 slots observed
-// in the reference detour. This prototype does not call any player/FPS setter.
+// in the reference detour. This hook does not call any player/FPS setter.
 using CameraFunction = std::uintptr_t (*)(void*, std::uintptr_t, std::uintptr_t, std::uintptr_t,
     std::uintptr_t, std::uintptr_t, std::uintptr_t, std::uintptr_t, std::uintptr_t, std::uintptr_t);
 CameraFunction original{};
@@ -153,7 +153,7 @@ std::uintptr_t camera_detour(void* object, std::uintptr_t a2, std::uintptr_t a3,
     if (control.blend<=0) { publish_telemetry(sample);return result; }
     const auto& calibration=control.settings;
     // Never fall back to the retracted third-person position if the anchor or calibration fails.
-    const auto target = anchored_position(after.first, sample.direction, calibration);
+    const auto target = anchored_position(after.first, after.second, sample.direction, calibration);
     if (!target) { last_valid_record.store(0, std::memory_order_release); publish_telemetry(sample); return result; }
     Vec3 position;
     for (unsigned i=0;i<3;++i) position[i]=sample.native_position[i]+((*target)[i]-sample.native_position[i])*control.blend;
@@ -261,14 +261,14 @@ void start_scoped_fov(std::uintptr_t module_base,const Log& log) {
     render_camera_address=module_base+0x5d047c0;render_vtable=module_base+0x4835370;
     override_flag_address=module_base+0x5d04f90;set_render_fov=reinterpret_cast<FovSetter>(module_base+0x3228200);
     if (MH_EnableHook(target)!=MH_OK) { log("Scoped FOV unavailable: hook enable failed; position transitions remain available.");return; }
-    log("Scoped FOV render hook installed; writes require a matching positioned camera and validated perspective lens. Position-record lifetime fix awaits live FOV retesting.");
+    log("Scoped FOV render hook installed; writes require a matching positioned camera and validated perspective lens.");
 }
 }
-bool start_camera_prototype(std::uintptr_t module_base, const Log& log) {
+bool start_camera_override(std::uintptr_t module_base, const Log& log) {
     auto* target = reinterpret_cast<void*>(module_base + 0x207BF90);
     std::array<unsigned char,25> actual{};
     if (!read(reinterpret_cast<std::uintptr_t>(target), actual.data(), actual.size()) || actual != prefix) {
-        log("Prototype camera hook rejected: signature differs or another camera mod hooked first."); return false;
+        log("Camera hook rejected: signature differs or another camera mod hooked first."); return false;
     }
     const auto init = MH_Initialize();
     if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) return false;
@@ -279,7 +279,7 @@ bool start_camera_prototype(std::uintptr_t module_base, const Log& log) {
     if (enable != MH_OK) { log(std::string("Camera hook enable failed: ") + MH_StatusToString(enable)); return false; }
     installed.store(true, std::memory_order_release);
     start_scoped_fov(module_base,log);
-    log("EXPERIMENTAL anchored camera prototype installed. Native boom retraction is excluded from placement; eye collision/body visibility still need testing.");
+    log("Anchored exploration camera installed with traversal-relative placement. Native boom retraction is excluded; separate eye collision and body hiding are not implemented.");
     return true;
 }
 FovTelemetry latest_fov_telemetry() {

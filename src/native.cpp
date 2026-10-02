@@ -109,11 +109,11 @@ DWORD WINAPI run(void*) {
         own_directory = std::filesystem::path(name.data()).parent_path();
         logfile.open(own_directory / "ExplorationFirstPerson.log", std::ios::app);
         if (!logfile) return 1;
-        const bool preview = GetPrivateProfileIntW(L"Safety", L"camera_writes", 0, (own_directory / "ExplorationFirstPerson.ini").c_str()) == 1;
-        log(std::string("Exploration First Person ") + EFP_VERSION + (preview ? ": EXPERIMENTAL anchored-camera preview." : ": diagnostic mode; camera writes disabled."));
+        const bool camera_writes = GetPrivateProfileIntW(L"Safety", L"camera_writes", 0, (own_directory / "ExplorationFirstPerson.ini").c_str()) == 1;
+        log(std::string("Exploration First Person ") + EFP_VERSION + (camera_writes ? ": anchored exploration camera." : ": diagnostic mode; camera writes disabled."));
         log("Steam Input Xbox layout; manual double-tap reactivation after combat. No physical HID polling.");
         efp::GameAdapter adapter;
-        adapter.initialize(log, preview);
+        adapter.initialize(log, camera_writes);
         const auto get_state = load_xinput();
         log(get_state ? "XInput backend ready." : "XInput unavailable; controller gestures disabled.");
         efp::Settings settings;
@@ -169,7 +169,7 @@ DWORD WINAPI run(void*) {
             efp::publish_camera_control(camera_active, context.state_observed, settings, efp::camera_transition_allowed(settings,context));
             if (camera_active != last_camera_active) {
                 last_camera_active = camera_active;
-                log(camera_active ? "CAMERA PREVIEW ON (double-tap)." : "CAMERA PREVIEW OFF (manual toggle or safety/combat rollback).");
+                log(camera_active ? "CAMERA ON (toggle or eligible-state resume)." : "CAMERA OFF (manual toggle or safety/combat rollback).");
             }
             if (context.state != last_state) { last_state = context.state; log(std::string("Observed gameplay state (diagnostic): ") + efp::state_name(last_state)); }
             efp::Millis observed{};
@@ -188,7 +188,7 @@ DWORD WINAPI run(void*) {
             if (focused && context.controller_connected && settings.enabled) {
                 if (diagnostic_taps.update(now, button)) {
                     log(std::string("Double-tap observed; state=") + efp::state_name(context.state) +
-                        "; camera_record=" + (context.camera_valid ? "eligible" : "unavailable") + "; preview=" + (camera_active ? "on" : "off"));
+                        "; camera_record=" + (context.camera_valid ? "eligible" : "unavailable") + "; camera=" + (camera_active ? "on" : "off"));
                 }
             } else diagnostic_taps.reset();
             if (now-last_fov_log>=500) {
@@ -214,14 +214,14 @@ DWORD WINAPI run(void*) {
             if (mode != last_mode) { last_mode = mode; log("Native camera mode mirror: " + std::to_string(mode) + " (semantics unvalidated)"); }
             if (now - last_heartbeat >= 5000) {
                 last_heartbeat = now;
-                log(std::string("Heartbeat: state=") + efp::state_name(context.state) + "; preview=" +
+                log(std::string("Heartbeat: state=") + efp::state_name(context.state) + "; camera=" +
                     (camera_active ? "on" : "off") + "; camera_record=" + (context.camera_valid ? "eligible" : "unavailable") +
                     "; controller=" + (selected >= 0 ? "connected" : "not detected"));
             }
             Sleep(10);
         }
-    } catch (const std::exception& error) { efp::publish_camera_control(false, 0, {}); if (logfile) log(std::string("Worker stopped; preview disabled: ") + error.what()); }
-    catch (...) { efp::publish_camera_control(false, 0, {}); if (logfile) log("Worker stopped; preview disabled after an unexpected exception."); }
+    } catch (const std::exception& error) { efp::publish_camera_control(false, 0, {}); if (logfile) log(std::string("Worker stopped; camera disabled: ") + error.what()); }
+    catch (...) { efp::publish_camera_control(false, 0, {}); if (logfile) log("Worker stopped; camera disabled after an unexpected exception."); }
     return 1;
 }
 }

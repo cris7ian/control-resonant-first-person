@@ -11,5 +11,6 @@ inline constexpr float reference_height = 0.05f;
 inline constexpr float reference_side = 0.10f;
 inline constexpr float max_eye_displacement = 1.25f;
 bool plausible_anchor(const Vec3& anchor, const Vec3& secondary, const Vec3& native_position);
-std::optional<Vec3> anchored_position(const Vec3& anchor, const Vec3& direction, const Settings& settings);
+// Use the matched pair's local-up candidate for height and lateral calibration.
+std::optional<Vec3> anchored_position(const Vec3& anchor, const Vec3& secondary, const Vec3& direction, const Settings& settings);
 } // namespace efp

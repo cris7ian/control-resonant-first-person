@@ -61,7 +61,7 @@ def stage(build: Path = ROOT / 'build', dependency_dir: Path | None = None) -> P
                     dest.write_bytes(archive.read(item))
         files = [{'path': p.relative_to(staging).as_posix(), 'sha256': deploy.digest(p)}
                  for p in sorted(staging.rglob('*')) if p.is_file()]
-        manifest = {'schema': 1, 'version': project_version(), 'mode': 'experimental_anchored_preview', 'files': files}
+        manifest = {'schema': 1, 'version': project_version(), 'mode': 'anchored_exploration_camera', 'files': files}
         (staging / 'package-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
         if target.exists(): shutil.rmtree(target)  # generated staging only, never installed files
         shutil.copytree(staging, target)

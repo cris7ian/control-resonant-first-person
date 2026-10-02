@@ -1,6 +1,6 @@
 ---
 name: install-control-resonant
-description: Build, verify, and safely install or update this repository's CONTROL Resonant exploration first-person preview, including local CRLoader and CRModMenu dependencies. Use for installation, reinstallation, updates, or receipt-based rollback.
+description: Build, verify, and safely install or update this repository's CONTROL Resonant exploration first-person mod, including local CRLoader and CRModMenu dependencies. Use for installation, reinstallation, updates, or receipt-based rollback.
 compatibility: Windows x64, Python 3.10+, CMake, Ninja, WinLibs GCC, and user-supplied hash-pinned dependency archives.
 ---
 
@@ -33,8 +33,9 @@ Do not install BetterCamera alongside this camera hook.
 
 Keep existing `ModMenuConfig/exploration_first_person.ini` settings during updates.
 Missing settings use the compiled defaults; the descriptor uses the same defaults.
-Pre-release 0.3.1 adds 180 ms eased manual toggles and optional 100° horizontal first-person FOV.
-Preserve existing settings. Missing transition/FOV keys use the compiled/menu defaults.
+Version 0.3.2 includes user-confirmed wall traversal, 180 ms eased manual toggles, and optional 100° horizontal first-person FOV.
+Preserve existing settings, including the legacy `prototype_distance` key. Missing transition/FOV keys use the compiled/menu defaults.
+The descriptor name is Exploration First Person and its version matches CMake without a preview suffix.
 Current baseline: distance −6.35, height −0.15, side 0, fine forward −0.05; RS and keyboard K double-taps.
 Placement uses a stable candidate anchor and a fixed 6-unit reference. Distance range is −7 to −5; combined local offsets are limited to 1.25 units.
 Exact non-nested story areas are allowed. Active dialogue retaining story/mode 0 remains an unvalidated detection case.
@@ -54,10 +55,10 @@ Keep receipts and backups outside the game folder.
 Never modify `CONTROLResonant.exe`, archives, saves, or `steam_api64.dll`.
 Do not launch the game automatically. Tell the user to launch through Steam with Steam Input's Xbox layout.
 Ask them to test RS toggles outside combat and manual reactivation after combat.
-This is an anchored prototype, not a validated head-bone/eye-collision implementation. Native update/history remain unchanged.
-For 0.3.1, ask the user to test both transition directions, FOV adjustment, native sprint effects, and immediate combat/focus returns.
+This is an anchored exploration camera, not a head-bone/eye-collision implementation. Native update/history remain unchanged.
+Ask the user to test floor-to-wall entry, wall toggles, floor return, both transition directions, FOV, and immediate combat/focus returns.
 Check `Scoped FOV` logs for a matching positioned render camera. FOV failure must not block position transitions.
-Corrected 0.3.1 transitions and FOV are user-confirmed. Live telemetry also recorded matched writes for 100° and 120° settings.
-The tested release code is on main; published tags and assets remain unchanged.
-The original installed preview's log contained no successful FOV writes. Use the corrected release, not that earlier build.
-Live confirmation does not establish universal native-effect, clipping, or scripted-state coverage.
+Wall traversal, transitions, and scoped FOV are user-confirmed. Live telemetry also recorded matched writes for 100° and 120° settings.
+Version 0.3.2 removes experimental labels. It does not establish universal native-effect, clipping, or scripted-state coverage.
+Before clearing runtime logs, review and archive them under ignored analysis/ with the game closed.
+Retain previous published tags and assets. Release preparation creates a draft unless publication is requested.

@@ -28,9 +28,13 @@ The 0.3.0 geometry replay passed all 123 captured wall-test samples. The user th
 Neither result proves complete camera ownership, eye collision, dialogue exclusion, or every combat transition.
 
 For camera changes, test a wall behind the player, walking, pitching, stairs, both toggle directions, story areas, active conversation, combat rollback, and focus loss.
+For traversal changes, test floor-to-wall entry, toggling while wall-walking, looking along local up, and returning to the floor.
 Stable 0.3.0 retains native FOV. The user confirmed corrected 0.3.1 transitions and FOV in live play.
 The original installed preview logged no successful FOV writes. After the lifetime fix, live telemetry recorded matched writes for 100° and 120° settings.
-The user then confirmed the corrected release works. Its tested code is merged into main; published tags and assets remain unchanged.
+The user then confirmed corrected FOV and wall traversal. Version 0.3.2 includes these live-tested features without experimental labels.
+The traversal test retained eligible records through exploration/story transitions and recorded matched 100° FOV writes.
+One lens rejection retained native FOV without disabling placement. Detailed geometry was disabled in that test.
+Do not claim full traversal geometry coverage from those heartbeats alone; combine telemetry with the user's explicit confirmation.
 Do not claim real FOV application, native effects, render matching, or full sprint/conversation coverage solely because automated checks pass.
 
 ## Implementation map
@@ -56,7 +60,7 @@ The full native camera ABI and exclusive player-camera ownership remain provisio
 The hook forwards ten observed integer/pointer argument slots and preserves the original return value.
 It runs the native update first, including native collision/history, then writes only 12 bytes of final output position.
 It does not change direction, visibility, native camera history, or global collision settings.
-Published 0.3.0 leaves FOV unchanged. Source 0.3.1 adds an independent original-first render projection hook; it never writes CameraView FOV or global tweaks.
+Versions 0.3.1 and 0.3.2 use an independent original-first render projection hook; it never writes CameraView FOV or global tweaks.
 
 Placement uses a validated, matched input0 record. It is a stable player-following candidate, not a proven head attachment.
 The input/output indices, input pointer, coordinate plausibility, direction, private writable output, freshness, foreground, and native mode are checked.
@@ -66,8 +70,21 @@ Invalid or replaced anchors leave native output untouched. There is no legacy re
 target = anchor
        - normalizedDirection * (6.0 + distance - fineForward)
        + up * (0.05 + height)
-       + horizontalRight * (0.10 + side)
+       + localRight * (0.10 + side)
 ```
+
+Traversal placement derives `up = normalize(input0 - input1)` from the matched, current input pair.
+Require finite coordinates, pair separation of 0.15–0.35 units, and native output within 12 units of input0.
+The captured wall walk retains 0.25-unit separation but rotates the pair from world Y to world X.
+This replaces the world-Y-only gate, which rejected that walk despite exploration state and completed double-taps.
+Treat the pair axis as a local-up candidate, not proof of gravity, head attachment, or exclusive ownership.
+Height follows that axis; `localRight = normalize(cross(up, normalizedDirection))` keeps sideways calibration tangent to it.
+When the cross-product length is at most 0.01, omit lateral calibration instead of inventing an axis.
+World-Y pairs retain the previous placement. Never write native direction, roll, collision history, or global settings.
+Regression tests cover captured traversal geometry, rotated placement, floor return, invalid pairs, and immediate native safety returns.
+The user confirmed wall traversal in live play. Captured replay and owned-record checks do not establish clipping protection.
+Eligibility checks validate pair spacing without normalizing its axis. Normalize only when computing an active placement target.
+The release review compared all 159 captured targets before and after this optimization; replay output remained identical.
 
 Distance range is −7…−5. The combined absolute local offsets must remain within 1.25 units.
 This bound limits calibration; it is not wall protection. A separate pivot-to-eye sweep and head/body hiding are not implemented.
@@ -77,10 +94,12 @@ Inherited stack activity follows case-insensitive parent dependencies with cycle
 Combat clears intent; protected states suspend it; focus loss clears it. Dialogue retaining `story` and mode 0 remains ambiguous.
 
 Defaults and menu reset values must agree: distance −6.35, height −0.15, side 0, fine forward −0.05; RS and keyboard K.
+Retain the legacy `prototype_distance` configuration ID for existing settings; it does not mark the feature as experimental.
 
-## Manual transitions and scoped FOV (0.3.1 pre-release)
+## Manual transitions and scoped FOV
 
-Keep 0.3.0 placement and state detection. The archived 0.4.x ECS/ancestry/physics reader is not used.
+Keep the anchor-based placement contract and state detection; traversal rotates the local calibration basis.
+The archived 0.4.x ECS/ancestry/physics reader is not used.
 The worker publishes a coherent settings/state/blend snapshot every input poll. Default duration is 180 ms; range is 0–500 ms.
 Quintic easing uses `6t^5 - 15t^4 + 10t^3`, with zero velocity and acceleration at the endpoints.
 A reversal starts at the current blend and scales duration by remaining distance. Position stays continuous; reversal velocity is not guaranteed continuous.
@@ -162,7 +181,9 @@ It never reads the dependency-inclusive `build/package` staging directory or ins
 
 Use `v<version>` for the Git tag. Keep CMake and the menu descriptor version aligned.
 Check README and installation ZIP examples against that version; a repository regression guards these examples.
-For pre-releases, retain the stable main branch and tag the verified feature-branch commit. Run CI on that exact source before publishing.
+After explicit live confirmation, merge the tested feature into main and prepare a regular release.
+For unconfirmed pre-releases, retain stable main and tag the verified feature branch. Run CI on the exact source before publishing.
+A release-preparation request creates a draft; publish only when requested. Do not move previous tags or replace previous assets.
 Download published assets again and verify checksums, manifest source identity, and every payload hash.
 Upload only the ZIP and checksum file. Do not upload local installation packages, dependency archives, telemetry, or receipts.
 

@@ -1,5 +1,17 @@
 # Change history
 
+## 0.3.2 — wall traversal and confirmed camera features
+
+- Allow first-person activation during wall traversal. Validate input-pair spacing rather than requiring world-Y alignment.
+- Derive height and sideways placement from the matched pair's local-up candidate. Preserve floor calibration and native direction/roll.
+- Keep the 1.25-unit local offset bound, 12-unit native-anchor bound, and all executable, signature, record, freshness, focus, and state gates.
+- Confirm wall traversal through user live testing. The latest session retains eligible records and matched FOV writes without a camera rollback during traversal.
+- Remove experimental/prototype labels from the menu, startup logs, installation metadata, and current documentation. Retain `prototype_distance` for settings compatibility.
+- Avoid unused axis normalization during eligibility checks. Verify identical output for all 159 captured replay samples.
+- Add rotated-placement, singular-view, invalid-pair, floor-return, FOV-match, safety-return, and stable-release metadata regressions.
+- Correct the activation log to include eligible-state resume, not only double-taps. Remove stale FOV/traversal retesting notices.
+- Retain known limits: no separate eye collision, no head/body hiding, and incomplete active-dialogue or scripted-state exclusion.
+
 ## 0.3.1 — transitions and experimental FOV pre-release
 
 - Retain the live-tested 0.3.0 anchor placement and input/state gates. Do not use the archived 0.4.x player/physics decoder.

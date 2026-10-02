@@ -68,7 +68,7 @@ int main() {
         check(!efp::latest_camera_telemetry().write_attempted,"idle attempted a write");
         efp::publish_camera_control(true,tick,settings,true);camera();near(output[11],6,"entry did not start at native endpoint");
         tick+=90;efp::publish_camera_control(true,tick,settings,true);camera();
-        const auto target=efp::anchored_position({0,0,0},{0,0,-1},settings);check(target.has_value(),"test calibration invalid");
+        const auto target=efp::anchored_position({0,0,0},{0,-0.25f,0},{0,0,-1},settings);check(target.has_value(),"test calibration invalid");
         near(output[11],6+((*target)[2]-6)*0.5f,"entry easing midpoint");
         near(project(),90.0f*std::numbers::pi_v<float>/180,"FOV did not use position blend");
         check(efp::latest_fov_telemetry().matched,"render camera match missing");
@@ -121,6 +121,27 @@ int main() {
         native_fov=105.0f*std::numbers::pi_v<float>/180;near(project(),native_fov,"native effect changed with zero FOV offset");
         check(setter_calls==before_noop,"zero FOV offset rebuilt the projection");
         settings.first_person_fov_enabled=false;efp::publish_camera_control(true,tick,settings,true);camera();near(output[11],(*target)[2],"disabled FOV blocked position");near(project(),native_fov,"disabled FOV wrote lens");
+        settings.first_person_fov_enabled=true;
+        // One active intent survives floor -> wall -> floor. Native rotation is never written.
+        efp::publish_camera_control(true,tick,settings,true);
+        const auto traversal_epoch=efp::control.epoch;
+        input[4]=-0.25f;input[5]=0;
+        camera();
+        check(efp::last_valid_record.load()==tick && efp::latest_camera_telemetry().anchor_used,"wall pair rejected");
+        near(output[9],efp::reference_height+settings.eye_height,"wall height used world up");
+        near(output[10],efp::reference_side+settings.eye_side,"wall lateral offset used world up");
+        near(output[11],(*target)[2],"wall forward calibration changed");
+        near(output[6],0,"wall traversal changed native direction X");near(output[7],0,"wall traversal changed native direction Y");near(output[8],-1,"wall traversal changed native direction Z");
+        near(project(),100.0f*std::numbers::pi_v<float>/180,"wall position did not match scoped FOV");
+        input[4]=0;input[5]=-0.25f;camera();
+        for (unsigned i=0;i<3;++i) near(output[9+i],(*target)[i],"floor return changed calibration");
+        check(efp::control.active && efp::control.epoch==traversal_epoch,"wall transition lost active intent");
+        input[4]=-0.25f;input[5]=0;
+        mode=1;camera();near(output[11],6,"protected wall camera wrote position");near(project(),native_fov,"protected wall camera wrote FOV");mode=0;
+        focused=false;camera();near(output[11],6,"unfocused wall camera wrote position");near(project(),native_fov,"unfocused wall camera wrote FOV");focused=true;
+        efp::publish_camera_control(false,tick,settings,false);camera();near(output[11],6,"wall safety interruption wrote position");near(project(),native_fov,"wall safety interruption wrote FOV");
+        input[4]=0;input[5]=-0.25f;
+        efp::publish_camera_control(true,tick,settings,true);
         input[5]=100;camera();check(!efp::latest_camera_telemetry().anchor_valid && efp::last_valid_record.load()==0,"invalid anchor retained eligibility");near(output[11],6,"invalid anchor wrote position");input[5]=-0.25f;
         tick+=151;camera();near(output[11],6,"stale control wrote position");near(project(),native_fov,"stale control wrote FOV");
         VirtualFree(other_lens,0,MEM_RELEASE);VirtualFree(lens,0,MEM_RELEASE);VirtualFree(records,0,MEM_RELEASE);

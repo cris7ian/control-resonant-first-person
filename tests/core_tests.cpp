@@ -96,12 +96,12 @@ void geometry_tests() {
     const Vec3 free_native{274.038f,1.891f,147.646f};
     const Vec3 direction{-0.032f,-0.021f,-0.999f};
     CHECK(plausible_anchor(free_anchor,free_secondary,free_native));
-    const auto free_target = anchored_position(free_anchor,direction,settings);
+    const auto free_target = anchored_position(free_anchor,free_secondary,direction,settings);
     CHECK(free_target.has_value());
     for (float boom : {0.6f,1.0f,3.3f,6.0f,6.4f}) {
         Vec3 native{}; for (unsigned i=0; i<3; ++i) native[i] = free_anchor[i]-direction[i]*boom;
         CHECK(plausible_anchor(free_anchor,free_secondary,native));
-        CHECK(anchored_position(free_anchor,direction,settings) == free_target); // native retraction is not an input
+        CHECK(anchored_position(free_anchor,free_secondary,direction,settings) == free_target); // native retraction is not an input
     }
     // Recorded old free-space view, adjusted for the user's new height (+0.10).
     const Vec3 calibrated{273.838f,1.609f,141.351f};
@@ -110,25 +110,105 @@ void geometry_tests() {
     const Vec3 wall_secondary{266.410f,1.526f,129.045f};
     const Vec3 wall_native{265.832f,1.803f,129.010f};
     CHECK(plausible_anchor(wall_anchor,wall_secondary,wall_native));
-    const auto wall_target = anchored_position(wall_anchor,{0.998f,-0.040f,0.044f},settings);
+    const auto wall_target = anchored_position(wall_anchor,wall_secondary,{0.998f,-0.040f,0.044f},settings);
     CHECK(wall_target.has_value());
     CHECK(std::abs((*wall_target)[0]-wall_anchor[0]) < 0.4f); // not the old 5.7-unit overshoot
     CHECK(std::abs((*wall_target)[1]-wall_anchor[1]) < 0.2f);
     CHECK(!plausible_anchor(wall_anchor,{266.410f,1.0f,129.045f},wall_native));
     CHECK(!plausible_anchor(wall_anchor,wall_secondary,{100,100,100}));
-    CHECK(!anchored_position(free_anchor,{0,0,0},settings));
-    CHECK(!anchored_position(free_anchor,{0,0,3},settings));
+    CHECK(!anchored_position(free_anchor,free_secondary,{0,0,0},settings));
+    CHECK(!anchored_position(free_anchor,free_secondary,{0,0,3},settings));
     for (const Vec3 axis : {Vec3{1,0,0},Vec3{0,1,0},Vec3{0,-1,0},Vec3{0,0,1}}) {
-        const auto target = anchored_position({0,0,0},axis,settings);
+        const auto target = anchored_position({0,0,0},{0,-0.25f,0},axis,settings);
         CHECK(target.has_value());
         float distance = 0; for (float v : *target) { CHECK(std::isfinite(v)); distance += v*v; }
         CHECK(distance <= max_eye_displacement*max_eye_displacement);
     }
     auto unsafe = settings; unsafe.eye_side = 1;
-    CHECK(!valid(unsafe)); CHECK(!anchored_position(free_anchor,direction,unsafe));
+    CHECK(!valid(unsafe)); CHECK(!anchored_position(free_anchor,free_secondary,direction,unsafe));
     auto nan = free_anchor; nan[0] = std::numeric_limits<float>::quiet_NaN();
-    CHECK(!anchored_position(nan,direction,settings));
+    CHECK(!anchored_position(nan,free_secondary,direction,settings));
     CHECK(!plausible_anchor(nan,free_secondary,free_native));
+}
+void traversal_geometry_tests() {
+    const Settings settings;
+    const Vec3 anchor{0,0,0}, secondary{0,-0.25f,0};
+    const Vec3 forward{0,0,-1}, native{0,0,6};
+    const auto floor_target = anchored_position(anchor,secondary,forward,settings);
+    CHECK(floor_target.has_value());
+    // Rigidly rotate the complete floor case through walls, ceilings and back.
+    for (unsigned plane = 0; plane < 3; ++plane) for (int degrees = 0; degrees <= 360; degrees += 5) {
+        const float angle = degrees * std::acos(-1.0f) / 180.0f;
+        const auto rotate = [angle,plane](const Vec3& v) -> Vec3 {
+            Vec3 rotated=v;const unsigned a=plane,b=(plane+1)%3;
+            rotated[a]=v[a]*std::cos(angle)+v[b]*std::sin(angle);
+            rotated[b]=-v[a]*std::sin(angle)+v[b]*std::cos(angle);
+            return rotated;
+        };
+        const auto rotated_secondary = rotate(secondary);
+        CHECK(plausible_anchor(anchor,rotated_secondary,rotate(native)));
+        const auto target = anchored_position(anchor,rotated_secondary,rotate(forward),settings);
+        CHECK(target.has_value());
+        const auto expected = rotate(*floor_target);
+        for (unsigned i=0;i<3;++i) CHECK(std::abs((*target)[i]-expected[i])<0.000001f);
+        CHECK(plausible_anchor(anchor,rotated_secondary,rotate({0,0,0.6f}))); // boom retraction remains irrelevant
+        CHECK(anchored_position(anchor,rotated_secondary,rotate(forward),settings)==target);
+    }
+    const Vec3 wall_secondary{-0.25f,0,0}; // local up is +X
+    const auto wall_target = anchored_position(anchor,wall_secondary,forward,settings);
+    CHECK(wall_target.has_value());
+    CHECK(std::abs((*wall_target)[0]-(reference_height+settings.eye_height))<0.000001f);
+    CHECK(std::abs((*wall_target)[1]-(reference_side+settings.eye_side))<0.000001f);
+    // Singular and near-singular views must stay finite without a world-up fallback.
+    for (const Vec3 direction : {Vec3{1,0,0},Vec3{-1,0,0},Vec3{1,0.001f,0},Vec3{1,0.02f,0}}) {
+        const auto target = anchored_position(anchor,wall_secondary,direction,settings);
+        CHECK(target.has_value());
+        float distance=0; for (float value:*target) { CHECK(std::isfinite(value)); distance+=value*value; }
+        CHECK(distance<=max_eye_displacement*max_eye_displacement);
+        const float length=std::sqrt(direction[0]*direction[0]+direction[1]*direction[1]);
+        const float axial=-(reference_boom+settings.prototype_distance-settings.eye_forward);
+        CHECK(std::abs((*target)[1]-direction[1]/length*axial)<0.000001f); // lateral contribution is along Z
+    }
+    struct Capture { Vec3 anchor,secondary,native,direction; };
+    // Rounded geometry from the rejected wall walk and its floor-return frame.
+    for (const Capture capture : {
+        Capture{{-390.203f,103.208f,-545.270f},{-390.453f,103.208f,-545.270f},
+            {-389.670f,97.432f,-546.814f},{-0.081f,0.958f,0.274f}},
+        Capture{{-390.242f,104.027f,-540.698f},{-390.492f,104.027f,-540.698f},
+            {-390.367f,109.278f,-543.684f},{0.029f,-0.866f,0.500f}},
+        Capture{{-388.672f,96.952f,-544.257f},{-388.675f,96.702f,-544.257f},
+            {-389.325f,102.841f,-543.920f},{0.152f,-0.988f,-0.013f}}}) {
+        CHECK(plausible_anchor(capture.anchor,capture.secondary,capture.native));
+        const auto target=anchored_position(capture.anchor,capture.secondary,capture.direction,settings);
+        CHECK(target.has_value());
+        float distance=0; for (unsigned i=0;i<3;++i) { const float d=(*target)[i]-capture.anchor[i];distance+=d*d; }
+        CHECK(distance<=max_eye_displacement*max_eye_displacement);
+    }
+    const float nan=std::numeric_limits<float>::quiet_NaN();
+    const float inf=std::numeric_limits<float>::infinity();
+    for (const Vec3 bad : {anchor,Vec3{-0.1f,0,0},Vec3{-0.4f,0,0},
+        Vec3{-0.25f,-0.25f,0},Vec3{nan,0,0},Vec3{0,inf,0},Vec3{1000001,0,0}}) {
+        CHECK(!plausible_anchor(anchor,bad,native));
+        CHECK(!anchored_position(anchor,bad,forward,settings));
+    }
+    for (unsigned axis=0;axis<3;++axis) for (float sign : {-1.0f,1.0f}) {
+        for (float spacing : {0.15f,0.25f,0.35f}) {
+            Vec3 second{};second[axis]=sign*spacing;
+            CHECK(plausible_anchor(anchor,second,native));
+            CHECK(anchored_position(anchor,second,forward,settings).has_value());
+        }
+        for (float spacing : {std::nextafter(0.15f,0.0f),std::nextafter(0.35f,1.0f)}) {
+            Vec3 second{};second[axis]=sign*spacing;
+            CHECK(!plausible_anchor(anchor,second,native));
+            CHECK(!anchored_position(anchor,second,forward,settings));
+        }
+    }
+    CHECK(plausible_anchor(anchor,wall_secondary,{0,0,12.0f}));
+    CHECK(!plausible_anchor(anchor,wall_secondary,{0,0,12.01f}));
+    CHECK(!plausible_anchor(anchor,wall_secondary,{nan,0,0}));
+    CHECK(!anchored_position(anchor,wall_secondary,{0,nan,0},settings));
+    auto unsafe=settings;unsafe.eye_height=2;
+    CHECK(!anchored_position(anchor,wall_secondary,forward,unsafe));
 }
 struct MemoryFixture {
     std::vector<unsigned char> memory = std::vector<unsigned char>(0x4000);
@@ -296,7 +376,7 @@ void config_tests() {
 }
 }
 int main() {
-    try { detector_tests(); policy_tests(); config_tests(); snapshot_tests(); geometry_tests(); transition_tests(); }
+    try { detector_tests(); policy_tests(); config_tests(); snapshot_tests(); geometry_tests(); traversal_geometry_tests(); transition_tests(); }
     catch (const std::exception& e) { std::cerr << e.what() << '\n'; return EXIT_FAILURE; }
     std::cout << checks << " checks passed\n";
 }

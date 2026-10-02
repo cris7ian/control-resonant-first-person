@@ -56,7 +56,7 @@ std::string executable_sha256() {
     for (auto byte : result) text << std::setw(2) << static_cast<unsigned>(byte);
     return text.str();
 }
-bool GameAdapter::initialize(const Log& log, bool camera_prototype) {
+bool GameAdapter::initialize(const Log& log, bool camera_writes) {
     base_ = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
     const auto hash = executable_sha256();
     log("Executable SHA256: " + (hash.empty() ? std::string("unavailable") : hash));
@@ -94,7 +94,7 @@ bool GameAdapter::initialize(const Log& log, bool camera_prototype) {
     log(supported_ ? "Static baseline matched. Exclusive camera ownership and head/eye attachment remain unverified." : "Static baseline rejected; adapter stays inactive.");
     if (supported_) {
         start_state_observer(base_, log);
-        if (camera_prototype) start_camera_prototype(base_, log);
+        if (camera_writes) start_camera_override(base_, log);
     }
     return supported_;
 }
@@ -113,7 +113,7 @@ Context GameAdapter::context() const {
     result.state_observed = observed;
     result.state_fresh = observed != 0 && now >= observed && now - observed <= 150;
     if (result.state_fresh) result.state = diagnostic_state(sample, camera_mode());
-    // This preview gates on structural eligibility; live semantic/ownership validation remains pending.
+    // Structural eligibility is not proof of exclusive player-camera ownership.
     return result;
 }
 } // namespace efp

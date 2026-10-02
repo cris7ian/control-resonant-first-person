@@ -23,7 +23,7 @@ Steam Input must provide an **Xbox layout** for controller input. The mod polls 
 Each release includes `SHA256SUMS.txt`. Compare its ZIP hash with PowerShell output:
 
 ```powershell
-Get-FileHash .\control-resonant-first-person-0.3.1-windows-x64.zip -Algorithm SHA256
+Get-FileHash .\control-resonant-first-person-0.3.2-windows-x64.zip -Algorithm SHA256
 ```
 
 The ZIP also includes `release-manifest.json`, with SHA-256 hashes for its payload files.
@@ -42,7 +42,7 @@ The ZIP also includes `release-manifest.json`, with SHA-256 hashes for its paylo
 
 ## Supported game build
 
-Versions 0.3.0 and 0.3.1 support the executable named `CONTROLResonant.exe` with this SHA-256:
+Version 0.3.2 supports the executable named `CONTROLResonant.exe` with this SHA-256:
 
 ```text
 4f6596b08bb5bc7fe4150cf5b9f71d7bae87eea02d66627c03a5e05ffe84ea62
@@ -56,7 +56,7 @@ Get-FileHash .\CONTROLResonant.exe -Algorithm SHA256
 ```
 
 The native adapter verifies the executable and expected hook signatures before installing hooks.
-Version 0.3.1 has user-confirmed transitions and corrected FOV. Its existing download retains the pre-release label; stable 0.3.0 remains available.
+Version 0.3.2 includes user-confirmed wall traversal, eased transitions, and scoped FOV. Previous release tags and assets remain unchanged.
 After a game update, an unsupported executable leaves the camera untouched. Do not bypass the compatibility gate.
 
 ## Troubleshooting
@@ -70,7 +70,7 @@ After a game update, an unsupported executable leaves the camera untouched. Do n
 
 ### The menu appears, but the camera does not change
 
-- Enable the mod in **Options → MODS → Exploration First Person (Prototype)**.
+- Enable the mod in **Options → MODS → Exploration First Person**.
 - Try double-tapping **K** during exploration to separate controller input from camera issues.
 - Release between taps; complete the second tap within 350 ms.
 - Confirm Steam Input uses an Xbox layout.
@@ -82,13 +82,13 @@ After a game update, an unsupported executable leaves the camera untouched. Do n
 Combat clears first-person intent. A new double-tap after combat is expected, not a failed automatic resume.
 Protected menus and unsupported camera records can also prevent writes.
 
-Version 0.3.1 adds **Camera transition duration** (180 ms default) and **First-person horizontal FOV** (100° default).
+**Camera transition duration** defaults to 180 ms. **First-person horizontal FOV** defaults to 100°.
+Version 0.3.2 permits first-person activation during wall traversal and rotates height/side calibration with the input pair.
 Disable **Custom first-person FOV** to retain native FOV without disabling smooth position transitions.
 Set transition duration to `0` for immediate manual toggles. Combat, focus loss, and protected-state returns remain immediate.
 Changing settings clears intent; leave the menu and double-tap again.
 If FOV does not change, inspect `Scoped FOV` logs. Unmatched render cameras retain native FOV, but position transitions remain available.
-The first installed preview applied no custom FOV in the captured session. The released correction fixes an expired stack-query check.
-The user confirmed corrected transitions and FOV; live logs also recorded matched writes for 100° and 120° settings.
+The user confirmed transitions, FOV, and wall traversal. Live logs recorded matched FOV writes for 100° and 120° settings.
 This does not guarantee every native FOV effect or scripted camera sequence.
 
 ### The view clips or affects a conversation
