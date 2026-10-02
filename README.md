@@ -1,6 +1,6 @@
 # CONTROL Resonant — Exploration First Person
 
-## Calibrated preview: 0.2.3
+## Calibrated preview: 0.2.4
 
 A Windows x64 exploration-camera mod using CRLoader 1.0.0, CRModMenu 1.7.0, and Steam Input's Xbox layout.
 The user confirmed that the calibrated exploration view works well.
@@ -15,7 +15,8 @@ Updates preserve existing settings. The native defaults and menu reset values us
 
 **This remains an offset preview, not a finished player-eye camera.**
 The game's third-person wall retraction still shifts the view. Collision, visibility, camera ownership, and full combat coverage remain unvalidated.
-FOV remains native. Toggle off or disable Enabled if the view clips or behaves incorrectly.
+FOV remains native. Version 0.2.4 adds optional read-only geometry logging for the wall-retraction investigation, not a collision bypass.
+Enable **Diagnostic logging** for the short [wall test](docs/CAMERA.md). Toggle off or disable Enabled if the view clips or behaves incorrectly.
 Set `camera_writes=0` in the installed safety INI and restart for diagnostic-only operation.
 
 ## Install
@@ -41,6 +42,7 @@ Start Pi in this repository and use `/skill:install-control-resonant`; use `/rel
 - [Installation and rollback](docs/INSTALLATION.md)
 - [Evidence and limitations](docs/ANALYSIS.md)
 - [Implementation plan and release gates](docs/PLAN.md)
+- [Camera collision and FOV investigation](docs/CAMERA.md)
 - [Change history](docs/CHANGELOG.md)
 - `src/`, `tests/`, `scripts/`: implementation and verification.
 - `assets/dependencies.json`: pinned loader/menu archive hashes; no downloaded binaries are committed.

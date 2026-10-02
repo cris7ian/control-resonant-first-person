@@ -16,6 +16,14 @@ CameraFunction original{};
 std::atomic<bool> installed{false};
 std::atomic<Millis> last_valid_record{0};
 std::atomic<Millis> active_sample{0};
+std::atomic<bool> debug_enabled{false};
+SRWLOCK telemetry_lock = SRWLOCK_INIT;
+CameraTelemetry telemetry;
+void publish_telemetry(const CameraTelemetry& sample) {
+    if (!debug_enabled.load(std::memory_order_relaxed) || !TryAcquireSRWLockExclusive(&telemetry_lock)) return;
+    if (sample.observed >= telemetry.observed) telemetry = sample;
+    ReleaseSRWLockExclusive(&telemetry_lock);
+}
 std::atomic<float> distance{Settings{}.prototype_distance}, height{Settings{}.eye_height},
     forward{Settings{}.eye_forward}, side{Settings{}.eye_side};
 std::uintptr_t mode_address{};
@@ -42,12 +50,35 @@ bool valid_record(const CameraRecord& record) {
     const auto length_squared = f[6]*f[6] + f[7]*f[7] + f[8]*f[8];
     return length_squared >= 0.25f && length_squared <= 4.0f;
 }
+struct InputRecord {
+    bool readable = false;
+    std::uintptr_t index = 0;
+    std::array<float,3> first{}, second{};
+};
+InputRecord read_input_record(std::uintptr_t owner) {
+    InputRecord input;
+    constexpr auto max = std::numeric_limits<std::uintptr_t>::max();
+    std::uintptr_t base{};
+    std::array<float,12> fields{};
+    if (owner < 0x10000 || owner > max - 0x70 ||
+        !read(owner + 0x30, &base, sizeof(base)) || !read(owner + 0x68, &input.index, sizeof(input.index)) ||
+        input.index > 0x100000 || base < 0x10000 || base > max - input.index * 0x30 - sizeof(fields) ||
+        !read(base + input.index * 0x30, fields.data(), sizeof(fields))) return input;
+    for (float value : fields) if (!std::isfinite(value) || std::abs(value) > 1000000.0f) return input;
+    input.first = {fields[0],fields[1],fields[2]};
+    input.second = {fields[4],fields[5],fields[6]};
+    input.readable = true;
+    return input;
+}
 std::uintptr_t camera_detour(void* object, std::uintptr_t a2, std::uintptr_t a3, std::uintptr_t a4,
     std::uintptr_t a5, std::uintptr_t a6, std::uintptr_t a7, std::uintptr_t a8, std::uintptr_t a9, std::uintptr_t a10) {
+    const auto owner = reinterpret_cast<std::uintptr_t>(object);
+    // Optional bounded reads only. Native execution, collision results and history remain unchanged.
+    const bool debug = debug_enabled.load(std::memory_order_relaxed);
+    const auto before = debug ? read_input_record(owner) : InputRecord{};
     const auto result = original(object,a2,a3,a4,a5,a6,a7,a8,a9,a10);
     const auto now = GetTickCount64();
     std::uintptr_t base{}, index{};
-    const auto owner = reinterpret_cast<std::uintptr_t>(object);
     if (owner < 0x10000 || owner > std::numeric_limits<std::uintptr_t>::max() - 0x70 ||
         !read(owner + 0x38, &base, sizeof(base)) || !read(owner + 0x68, &index, sizeof(index)) ||
         index > 0x100000 || base > std::numeric_limits<std::uintptr_t>::max() - index * 0x40) return result;
@@ -55,12 +86,24 @@ std::uintptr_t camera_detour(void* object, std::uintptr_t a2, std::uintptr_t a3,
     CameraRecord record{};
     if (!writable_record(address) || !read(address, &record, sizeof(record)) || !valid_record(record)) return result;
     last_valid_record.store(now, std::memory_order_release);
+    CameraTelemetry sample;
+    sample.observed = now; sample.record_index = index;
+    sample.native_position = {record.fields[9],record.fields[10],record.fields[11]};
+    sample.requested_position = sample.native_position;
+    sample.direction = {record.fields[6],record.fields[7],record.fields[8]};
+    if (debug) {
+        const auto after = read_input_record(owner);
+        sample.input_before_readable = before.readable && before.index == index;
+        sample.input_after_readable = after.readable && after.index == index;
+        if (sample.input_before_readable) { sample.input0_before = before.first; sample.input1_before = before.second; }
+        if (sample.input_after_readable) { sample.input0_after = after.first; sample.input1_after = after.second; }
+    }
     const auto observed = active_sample.load(std::memory_order_acquire);
     int mode = -1;
     DWORD process{}; const auto window = GetForegroundWindow();
     if (window) GetWindowThreadProcessId(window, &process);
     if (!observed || now < observed || now - observed > 150 || process != GetCurrentProcessId() ||
-        !read(mode_address, &mode, sizeof(mode)) || mode != 0) return result;
+        !read(mode_address, &mode, sizeof(mode)) || mode != 0) { publish_telemetry(sample); return result; }
 
     const auto* f = record.fields;
     const float norm = std::sqrt(f[6]*f[6] + f[7]*f[7] + f[8]*f[8]);
@@ -73,10 +116,14 @@ std::uintptr_t camera_detour(void* object, std::uintptr_t a2, std::uintptr_t a3,
         const auto sideways = side.load(std::memory_order_relaxed) / horizontal;
         position[0] += fz*sideways; position[2] -= fx*sideways;
     }
-    for (const auto value : position) if (!std::isfinite(value) || std::abs(value) > 1000000.0f) return result;
+    for (const auto value : position) if (!std::isfinite(value) || std::abs(value) > 1000000.0f) { publish_telemetry(sample); return result; }
     SIZE_T written{};
+    sample.requested_position = position;
+    sample.write_attempted = true;
     // Bounded write to output position only. No game flags, archives, FOV, or visibility writes.
-    WriteProcessMemory(GetCurrentProcess(), reinterpret_cast<void*>(address + 0x24), position.data(), sizeof(position), &written);
+    sample.write_ok = WriteProcessMemory(GetCurrentProcess(), reinterpret_cast<void*>(address + 0x24), position.data(), sizeof(position), &written) && written == sizeof(position);
+    sample.write_bytes = written;
+    publish_telemetry(sample);
     return result;
 }
 }
@@ -97,6 +144,13 @@ bool start_camera_prototype(std::uintptr_t module_base, const Log& log) {
     log("EXPERIMENTAL camera-offset prototype installed. Eye anchor/body visibility/collision not yet validated.");
     return true;
 }
+CameraTelemetry latest_camera_telemetry() {
+    CameraTelemetry copy;
+    if (!TryAcquireSRWLockShared(&telemetry_lock)) return copy;
+    copy = telemetry;
+    ReleaseSRWLockShared(&telemetry_lock);
+    return copy;
+}
 bool camera_record_recent() {
     const auto seen = last_valid_record.load(std::memory_order_acquire);
     const auto now = GetTickCount64();
@@ -107,6 +161,7 @@ void publish_camera_control(bool active, Millis observed, const Settings& settin
     height.store(settings.eye_height, std::memory_order_relaxed);
     forward.store(settings.eye_forward, std::memory_order_relaxed);
     side.store(settings.eye_side, std::memory_order_relaxed);
+    debug_enabled.store(settings.debug, std::memory_order_relaxed);
     active_sample.store(active ? observed : 0, std::memory_order_release);
 }
 } // namespace efp

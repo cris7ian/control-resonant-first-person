@@ -1,5 +1,13 @@
 # Change history
 
+## 0.2.4 — wall-retraction diagnostics
+
+- Add opt-in bounded reads of candidate camera input records before/after the existing native update.
+- Report native/requested positions and actual position-write status, at most twice per second.
+- Keep geometry publication nonblocking and preserve the original native call and camera math.
+- Add the free-space versus wall test and collision/FOV evidence notes.
+- Do not change collision, native history, FOV, calibrated defaults, or existing settings. Live geometry correlation remains pending.
+
 ## 0.2.3 — calibrated baseline and repeatable installation
 
 - Adopt the user's working calibration: distance −6.3, height −0.2, side 0, fine forward −0.05, keyboard K.

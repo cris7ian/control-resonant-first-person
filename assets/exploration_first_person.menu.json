@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "exploration_first_person",
   "name": "Exploration First Person (Prototype)",
-  "version": "0.2.3-preview",
+  "version": "0.2.4-preview",
   "dll": "ExplorationFirstPerson.dll",
   "options": [
     {"id":"enabled","type":"toggle","label":"Enabled","default":true,"description":"Double-tap RS outside combat to toggle the experimental close camera. Double-tap again to return.\n\nCombat/protected states return to the original camera. Calibrated exploration view; eye ownership, wall handling, character clipping and combat detection still need validation."},
@@ -15,6 +15,6 @@
     {"id":"double_tap_ms","type":"slider","label":"Double-tap window (ms)","default":350,"min":150,"max":800,"step":10,"description":"Maximum time between completed clicks."},
     {"id":"max_tap_ms","type":"slider","label":"Maximum click duration (ms)","default":250,"min":50,"max":500,"step":10,"description":"Longer holds do not count as clicks."},
     {"id":"min_gap_ms","type":"slider","label":"Minimum click gap (ms)","default":40,"min":10,"max":100,"step":10,"description":"Rejects button bounce between clicks."},
-    {"id":"debug","type":"toggle","label":"Diagnostic logging","default":false,"description":"Logs state changes and recognized gestures. No raw controller identifiers are recorded."}
+    {"id":"debug","type":"toggle","label":"Diagnostic logging","default":false,"description":"Adds read-only camera input/output geometry and position-write results, up to twice per second. Use for free-space versus wall-behind-player tests. It does not disable collision or change FOV. State and gesture logs remain available when off."}
   ]
 }

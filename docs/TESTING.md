@@ -1,4 +1,4 @@
-# Playable preview test: 0.2.3
+# Playable preview test: 0.2.4
 
 ## Current evidence and limits
 
@@ -64,6 +64,9 @@ Game folder: `G:\SteamLibrary\steamapps\common\CONTROL Resonant`.
 
 The mod log includes the version, executable fingerprint, explicit activity, and inherited effective activity.
 A `CAMERA PREVIEW ON` message reports policy activation, not independent proof of camera ownership or every successful memory write.
+With **Diagnostic logging** enabled, 0.2.4 adds `CAMERA GEOMETRY` lines at most twice per second.
+They record candidate input vectors, native/requested positions, and actual position-write status. Their input/pivot semantics remain unvalidated.
+See [CAMERA.md](CAMERA.md) for the stationary wall-retraction test. Geometry logging adds bounded reads, not a collision bypass.
 Tell the assistant when testing starts or finishes. It can inspect these local files; no upload is needed.
 
 ## Diagnostic-only fallback

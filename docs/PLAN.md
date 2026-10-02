@@ -1,6 +1,6 @@
 # Implementation plan
 
-## Implementation checkpoint: calibrated preview 0.2.3
+## Implementation checkpoint: calibrated preview 0.2.4
 
 Implemented and automated-test verified:
 - Controller-independent double-tap detector and fail-closed camera policy.
@@ -14,6 +14,8 @@ The user requested and tested a playable prototype instead of further test expan
 Preview activation requires a supported executable, readable/fresh UI snapshot, foreground input, native camera mode 0, and a structurally plausible writable camera record. Combat clears the request. These checks are not proof of playable-character ownership or complete protection coverage.
 
 The user confirmed a useful exploration view. Native wall retraction still shifts it; the next dependency is identifying the pre-collision pivot or a narrowly scoped boom-retraction control. Eye/camera ownership, body visibility, and complete combat/protected coverage remain open. FOV remains native until axis, units, aspect handling, and a scoped override are validated. This is not a completed first-person mod. The independent resource bridge remains uninstalled. Effective activity now mirrors the native parent recursion with cycle protection; the explicit byte alone is not used as the final activity result.
+
+Version 0.2.4 adds opt-in input/output geometry telemetry to the existing camera hook. It does not add a collision hook, change native collision history, or change FOV. The next live gate is the stationary wall test in [CAMERA.md](CAMERA.md). Static inspection found the boom resolver at RVA `0x2853140`, but its mixed ABI and safe eye-collision policy are not ready for a bypass.
 
 Full requested scope remains the outcome below. Unresolved camera geometry, visibility, and collision work is not treated as complete or removed from scope.
 
@@ -242,7 +244,7 @@ assets/{exploration_first_person.menu.json,ExplorationFirstPerson.ini,dependenci
 tests/{core_tests.cpp,native_smoke.cpp,deploy_tests.py,package_tests.py}
 scripts/{install,package,deploy}.py
 .pi/skills/install-control-resonant/SKILL.md
-docs/{ANALYSIS,PLAN,TESTING,INSTALLATION,CHANGELOG}.md
+docs/{ANALYSIS,PLAN,TESTING,INSTALLATION,CHANGELOG,CAMERA}.md
 third_party/minhook/               # vendored source and license
 reference/                         # ignored local dependency archives and research
 analysis/                          # ignored local evidence and latest receipt pointer

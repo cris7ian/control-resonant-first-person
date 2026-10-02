@@ -30,6 +30,8 @@ Logs confirm recognized gestures, eligible records, exploration activation, and 
 
 The dependencies and preview are installed locally with receipt-based backups. The executable remained unchanged. FOV and visibility remain native; collision is not disabled. Set the installed safety INI's `camera_writes=0` and restart for state/input diagnostics without the camera hook.
 
+Static follow-up identified a native sweep/recovery resolver at RVA `0x2853140`, called twice by the camera update. Its mixed register/stack ABI differs from the preview's main camera hook. Version 0.2.4 adds opt-in candidate input/output telemetry to the existing hook only; it does not intercept or bypass this resolver. Candidate input records use owner `+0x30`, stride `0x30`. Live anchor correlation remains pending. See [CAMERA.md](CAMERA.md) for the proof boundaries, wall test, and native-FOV recommendation.
+
 ## Initial inspection method and limits
 
 Inspected the four local ZIP files, extracted their contents, read the English author guide, and inspected the supplied JavaScript.

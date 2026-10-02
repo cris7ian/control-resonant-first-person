@@ -1,6 +1,20 @@
 #pragma once
 #include "game_adapter.hpp"
+#include <array>
 namespace efp {
+struct CameraTelemetry {
+    Millis observed = 0;
+    std::uintptr_t record_index = 0;
+    bool input_before_readable = false;
+    bool input_after_readable = false;
+    bool write_attempted = false;
+    bool write_ok = false;
+    std::size_t write_bytes = 0;
+    std::array<float,3> input0_before{}, input1_before{}, input0_after{}, input1_after{};
+    std::array<float,3> direction{}, native_position{}, requested_position{};
+};
+// Diagnostic copies only; input vectors are candidates, not proven eye/pivot coordinates.
+CameraTelemetry latest_camera_telemetry();
 bool start_camera_prototype(std::uintptr_t module_base, const Log& log);
 bool camera_record_recent();
 void publish_camera_control(bool active, Millis state_observed, const Settings& settings);

@@ -7,6 +7,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iterator>
 #include <optional>
 #include <sstream>
@@ -39,6 +40,22 @@ bool foreground() {
     if (!window) return false;
     GetWindowThreadProcessId(window, &owner);
     return owner == GetCurrentProcessId();
+}
+std::string camera_geometry(const efp::CameraTelemetry& sample) {
+    std::ostringstream text;
+    text << std::fixed << std::setprecision(3);
+    text << "CAMERA GEOMETRY: record=" << sample.record_index
+         << "; write=" << (sample.write_attempted ? (sample.write_ok ? "ok" : "failed") : "inactive")
+         << "; write_bytes=" << sample.write_bytes
+         << "; input_before=" << (sample.input_before_readable ? "readable" : "unavailable")
+         << "; input_after=" << (sample.input_after_readable ? "readable" : "unavailable");
+    const auto vector = [&text](const char* name, const std::array<float,3>& value) {
+        text << "; " << name << "=(" << value[0] << ',' << value[1] << ',' << value[2] << ')';
+    };
+    if (sample.input_before_readable) { vector("input0_before", sample.input0_before); vector("input1_before", sample.input1_before); }
+    if (sample.input_after_readable) { vector("input0_after", sample.input0_after); vector("input1_after", sample.input1_after); }
+    vector("native", sample.native_position); vector("requested", sample.requested_position); vector("axis", sample.direction);
+    return text.str();
 }
 using GetState = DWORD (WINAPI*)(DWORD, XINPUT_STATE*);
 GetState load_xinput() {
@@ -89,7 +106,7 @@ DWORD WINAPI run(void*) {
         efp::CameraPolicy policy(settings);
         std::optional<std::string> pending_ini;
         std::optional<std::string> accepted_ini;
-        efp::Millis last_config{}, last_heartbeat{};
+        efp::Millis last_config{}, last_heartbeat{}, last_geometry{}, last_geometry_observed{};
         int selected = -1;
         int last_mode = -999;
         bool last_focus = false;
@@ -157,6 +174,14 @@ DWORD WINAPI run(void*) {
                         "; camera_record=" + (context.camera_valid ? "eligible" : "unavailable") + "; preview=" + (camera_active ? "on" : "off"));
                 }
             } else diagnostic_taps.reset();
+            if (settings.debug && now - last_geometry >= 500) {
+                last_geometry = now;
+                const auto sample = efp::latest_camera_telemetry();
+                if (sample.observed && sample.observed != last_geometry_observed && now >= sample.observed && now - sample.observed <= 200) {
+                    last_geometry_observed = sample.observed;
+                    log(camera_geometry(sample));
+                }
+            }
             const int mode = adapter.camera_mode();
             if (mode != last_mode) { last_mode = mode; log("Native camera mode mirror: " + std::to_string(mode) + " (semantics unvalidated)"); }
             if (now - last_heartbeat >= 5000) {
