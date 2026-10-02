@@ -28,8 +28,9 @@ The 0.3.0 geometry replay passed all 123 captured wall-test samples. The user th
 Neither result proves complete camera ownership, eye collision, dialogue exclusion, or every combat transition.
 
 For camera changes, test a wall behind the player, walking, pitching, stairs, both toggle directions, story areas, active conversation, combat rollback, and focus loss.
-Published 0.3.0 retains native FOV. Source prototype 0.3.1 adds independently gated render FOV and eased transitions; live validation is pending.
-Do not claim transition feel, real projection execution, render matching, or sprint/conversation coverage passed solely because automated checks pass.
+Stable 0.3.0 retains native FOV. The user confirmed 0.3.1 transitions in live play.
+The original installed preview logged no successful FOV writes. The pre-release corrects the render-stage lifetime check; FOV retesting remains pending.
+Do not claim real FOV application, native effects, render matching, or full sprint/conversation coverage solely because automated checks pass.
 
 ## Implementation map
 
@@ -76,7 +77,7 @@ Combat clears intent; protected states suspend it; focus loss clears it. Dialogu
 
 Defaults and menu reset values must agree: distance −6.35, height −0.15, side 0, fine forward −0.05; RS and keyboard K.
 
-## Manual transitions and scoped FOV (0.3.1 source prototype)
+## Manual transitions and scoped FOV (0.3.1 pre-release)
 
 Keep 0.3.0 placement and state detection. The archived 0.4.x ECS/ancestry/physics reader is not used.
 The worker publishes a coherent settings/state/blend snapshot every input poll. Default duration is 180 ms; range is 0–500 ms.
@@ -93,9 +94,12 @@ Validate that exact camera, writable lens storage, native vtable RVA `0x4835370`
 The getter at `0x3228290` computes vertical FOV as `2*atan(tan(horizontalFov/2)/aspect)`; native lens angles use radians.
 Signature-check both builder and setter before installing the FOV hook. FOV hook rejection must not reject the existing position hook.
 
-Match transform direction/position to one of eight recent successfully positioned records, within 0.0001 units and 100 ms.
-Require the current control epoch and revalidate the live owner/output address, direction, position, focus, freshness, and native mode.
-This is a render-record correlation gate, not a new proof of exclusive player ownership. Ambiguous/native sequences still need live coverage.
+Match transform direction/position to exactly one of eight recent successfully positioned records, within 0.0001 units and 100 ms.
+Reject ambiguous matches. Require the current control epoch and revalidate the output record's private writable memory, direction, position, focus, freshness, and native mode.
+Do not reread the camera hook's query/owner pointer later. Native caller `0x208F050` constructs it at `RSP+0x50` and passes that stack address in RCX.
+The stack query expires when its caller returns; the actual output-record address is the value retained for render correlation.
+Regression tests fail against the original preview when that stack query is overwritten after the position write.
+This remains a bounded render-record correlation gate, not proof of exclusive player ownership. Other native sequences still need live coverage.
 FOV rejection leaves the native projection intact and does not invalidate position eligibility.
 
 The optional horizontal first-person FOV defaults to 100 degrees, range 60–120. Capture native FOV on the first matched entry frame.
@@ -103,12 +107,16 @@ Apply `nativeFov + (requestedEntryFov - entryNativeFov) * positionedBlend` using
 The setter receives its float in XMM1, updates `+0x2D0`, and calls the native projection rebuild at `0x3228DD0`.
 Never hand-edit matrices or change input FOV, global override byte `0x5D04F90`, or shared game camera components.
 Respect an active native global override by leaving FOV untouched. Preserve native lens/aspect parameters and native effects computed before the setter.
+Key the entry reference by control epoch and matched output-record address. Unrelated render-camera calls do not clear it or replace gameplay telemetry.
+A regression fails against the original preview when an unrelated camera call resets the native-effect reference.
 Native FOV changes after entry remain additive. Activating during a native FOV effect includes that effect in the captured entry reference.
+Skip the setter when output equals current native FOV within 0.000001 radians. Do not compare against the previous frame's modified FOV.
 At completed exit or safety interruption, the next original render build supplies native FOV again. No persistent game FOV value needs restoration.
 
 Change-only `Scoped FOV` logs report matching/rejection even without debug. Optional geometry includes native/output FOV and blend at most twice per second.
-Owned-record tests check the mixed ABI, matched/unmatched render records, native FOV deltas, unchanged input FOV, disabled FOV independence, and safety returns.
-These mocks and static evidence are not live validation. Keep this prototype off the public release until tested.
+Rejected frames omit unmeasured angles rather than reporting zero-initialized values as 0 degrees. Disable diagnostic logging during normal play.
+Owned-record tests cover expired stack queries, unrelated cameras, ambiguous matches, no-op projection rebuilding, mixed ABI, native FOV deltas, and safety returns.
+These mocks and static evidence do not establish live FOV application. Publish 0.3.1 as a pre-release; keep stable main at 0.3.0 until retesting.
 
 ## Reversible local installation
 
@@ -149,6 +157,9 @@ The ZIP includes default assets, documentation, third-party notices, and a hashe
 It never reads the dependency-inclusive `build/package` staging directory or installed game settings.
 
 Use `v<version>` for the Git tag. Keep CMake and the menu descriptor version aligned.
+Check README and installation ZIP examples against that version; a repository regression guards these examples.
+For pre-releases, retain the stable main branch and tag the verified feature-branch commit. Run CI on that exact source before publishing.
+Download published assets again and verify checksums, manifest source identity, and every payload hash.
 Upload only the ZIP and checksum file. Do not upload local installation packages, dependency archives, telemetry, or receipts.
 
 Update runtime notices when changing the compiler toolchain. The project's own source license has not been selected.

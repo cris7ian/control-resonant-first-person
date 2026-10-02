@@ -36,7 +36,7 @@ bool game_foreground() {
 }
 bool (*foreground_check)() = &game_foreground;
 struct PositionedCamera {
-    std::uintptr_t owner{}, address{};
+    std::uintptr_t address{};
     Millis observed{}, epoch{};
     float blend{};
     Vec3 position{}, direction{};
@@ -45,7 +45,7 @@ SRWLOCK positioned_lock = SRWLOCK_INIT;
 std::array<PositionedCamera,8> positioned;
 void publish_position(const PositionedCamera& sample) {
     if (!TryAcquireSRWLockExclusive(&positioned_lock)) return;
-    auto slot=std::find_if(positioned.begin(),positioned.end(),[&](const auto& p) { return p.owner==sample.owner && p.address==sample.address; });
+    auto slot=std::find_if(positioned.begin(),positioned.end(),[&](const auto& p) { return p.address==sample.address; });
     if (slot==positioned.end()) slot=std::min_element(positioned.begin(),positioned.end(),[](const auto& a,const auto& b) { return a.observed<b.observed; });
     *slot=sample;ReleaseSRWLockExclusive(&positioned_lock);
 }
@@ -65,6 +65,7 @@ std::uintptr_t render_camera_address{}, render_vtable{}, override_flag_address{}
 SRWLOCK fov_lock = SRWLOCK_INIT;
 FovTelemetry fov_telemetry;
 Millis fov_epoch{};
+std::uintptr_t fov_record_address{};
 float fov_baseline{};
 bool fov_calibrated = false;
 std::uintptr_t mode_address{};
@@ -170,7 +171,7 @@ std::uintptr_t camera_detour(void* object, std::uintptr_t a2, std::uintptr_t a3,
     // Bounded position-only write. FOV is independently gated in the render projection hook.
     sample.write_ok = WriteProcessMemory(GetCurrentProcess(), reinterpret_cast<void*>(address + 0x24), position.data(), sizeof(position), &written) && written == sizeof(position);
     sample.write_bytes = written;
-    if (sample.write_ok) publish_position({owner,address,now,control.epoch,control.blend,position,sample.direction});
+    if (sample.write_ok) publish_position({address,now,control.epoch,control.blend,position,sample.direction});
     publish_telemetry(sample);
     return result;
 }
@@ -178,12 +179,13 @@ std::uintptr_t camera_detour(void* object, std::uintptr_t a2, std::uintptr_t a3,
 // Run it unchanged first. Adjust only its scratch render camera via the native matrix-rebuilding setter.
 void projection_detour(void* camera,const void* frame,float* fov,float aspect) {
     original_projection(camera,frame,fov,aspect);
+    // Unrelated cameras must not clear the gameplay camera's entry FOV or diagnostic result.
+    if (reinterpret_cast<std::uintptr_t>(camera)!=render_camera_address || !set_render_fov) return;
     if (!TryAcquireSRWLockExclusive(&fov_lock)) return;
     struct UnlockFov { ~UnlockFov() { ReleaseSRWLockExclusive(&fov_lock); } } unlock_fov;
     const auto now=clock_now();
     fov_telemetry={};fov_telemetry.observed=now;
     const auto reject=[&](const char* why) { fov_calibrated=false;fov_telemetry.reason=why; };
-    if (reinterpret_cast<std::uintptr_t>(camera)!=render_camera_address || !set_render_fov) { reject("other render camera");return; }
     if (!TryAcquireSRWLockShared(&control_lock)) { reject("control busy");return; }
     struct UnlockControl { ~UnlockControl() { ReleaseSRWLockShared(&control_lock); } } unlock_control;
     int mode=-1;
@@ -207,33 +209,40 @@ void projection_detour(void* camera,const void* frame,float* fov,float aspect) {
     if (!read(reinterpret_cast<std::uintptr_t>(frame),transform.data(),sizeof(transform)) || !TryAcquireSRWLockShared(&positioned_lock)) {
         reject("render transform unavailable");return;
     }
-    PositionedCamera match{};bool found=false;
+    PositionedCamera match{};bool found=false,ambiguous=false;
     for (const auto& p:positioned) {
         if (!p.observed || now<p.observed || now-p.observed>100 || p.epoch!=control.epoch || p.blend<=0) continue;
         bool same=true;
         for (unsigned i=0;i<3;++i) same=same && std::isfinite(transform[6+i]) && std::isfinite(transform[9+i]) &&
             std::abs(transform[6+i]-p.direction[i])<=0.0001f && std::abs(transform[9+i]-p.position[i])<=0.0001f;
-        if (same && (!found || p.observed>=match.observed)) { match=p;found=true; }
+        if (same) {
+            if (found) { ambiguous=true;break; }
+            match=p;found=true;
+        }
     }
     ReleaseSRWLockShared(&positioned_lock);
+    if (ambiguous) { reject("ambiguous positioned camera");return; }
     if (!found) { reject("no matching positioned camera");return; }
-    // Revalidate the live owner/output mapping too; a cached transform alone is insufficient.
-    std::uintptr_t base{},index{};CameraRecord current{};
-    if (!read(match.owner+0x38,&base,8) || !read(match.owner+0x68,&index,8) || index>0x100000 ||
-        base>std::numeric_limits<std::uintptr_t>::max()-index*0x40 || base+index*0x40!=match.address ||
-        !read(match.address,&current,sizeof(current))) { reject("positioned camera changed");return; }
+    // RVA 0x208F050 passes a stack-built query to the position hook (RCX = RSP+0x50).
+    // Its owner pointer expires before rendering. Revalidate the actual output record instead.
+    CameraRecord current{};
+    if (!writable_record(match.address) || !read(match.address,&current,sizeof(current)) ||
+        !valid_record(current)) { reject("positioned record unavailable");return; }
     for (unsigned i=0;i<3;++i) if (current.fields[6+i]!=match.direction[i] || current.fields[9+i]!=match.position[i]) {
         reject("positioned camera changed");return;
     }
-    if (!fov_calibrated || fov_epoch!=control.epoch) { fov_baseline=native_fov;fov_epoch=control.epoch;fov_calibrated=true; }
+    if (!fov_calibrated || fov_epoch!=control.epoch || fov_record_address!=match.address) {
+        fov_baseline=native_fov;fov_epoch=control.epoch;fov_record_address=match.address;fov_calibrated=true;
+    }
     constexpr float radians=std::numbers::pi_v<float>/180.0f;
     // Retain native FOV changes after entry as additive offsets, including native sprint changes.
     const float output=native_fov+(control.settings.first_person_fov*radians-fov_baseline)*match.blend;
     // The transition can start outside the menu target range; bound it to the validated native lens range.
     if (!std::isfinite(output) || output<0.35f || output>2.8f || !foreground_check() ||
         !read(mode_address,&mode,4) || mode!=0) { reject("FOV bounds or safety changed");return; }
-    set_render_fov(camera,output);
-    fov_telemetry.matched=true;fov_telemetry.applied=true;fov_telemetry.blend=match.blend;
+    const bool changed=std::abs(output-native_fov)>0.000001f;
+    if (changed) set_render_fov(camera,output);
+    fov_telemetry.matched=true;fov_telemetry.applied=changed;fov_telemetry.blend=match.blend;
     fov_telemetry.native_degrees=native_fov/radians;fov_telemetry.output_degrees=output/radians;
     fov_telemetry.reason="matched positioned render camera";
 }
@@ -252,7 +261,7 @@ void start_scoped_fov(std::uintptr_t module_base,const Log& log) {
     render_camera_address=module_base+0x5d047c0;render_vtable=module_base+0x4835370;
     override_flag_address=module_base+0x5d04f90;set_render_fov=reinterpret_cast<FovSetter>(module_base+0x3228200);
     if (MH_EnableHook(target)!=MH_OK) { log("Scoped FOV unavailable: hook enable failed; position transitions remain available.");return; }
-    log("Scoped FOV render hook installed; writes require a matching positioned camera and validated perspective lens. Live validation pending.");
+    log("Scoped FOV render hook installed; writes require a matching positioned camera and validated perspective lens. Position-record lifetime fix awaits live FOV retesting.");
 }
 }
 bool start_camera_prototype(std::uintptr_t module_base, const Log& log) {

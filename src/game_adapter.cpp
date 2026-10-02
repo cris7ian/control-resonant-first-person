@@ -91,7 +91,7 @@ bool GameAdapter::initialize(const Log& log, bool camera_prototype) {
     message << "Camera prologue candidates: " << matches << "; candidate RVA 0x" << std::hex << candidate;
     log(message.str());
     supported_ = matches == 1 && candidate == 0x207BF90 && mode_section_ok;
-    log(supported_ ? "Static baseline matched. Live camera ownership/eye placement remains unvalidated." : "Static baseline rejected; adapter stays inactive.");
+    log(supported_ ? "Static baseline matched. Exclusive camera ownership and head/eye attachment remain unverified." : "Static baseline rejected; adapter stays inactive.");
     if (supported_) {
         start_state_observer(base_, log);
         if (camera_prototype) start_camera_prototype(base_, log);

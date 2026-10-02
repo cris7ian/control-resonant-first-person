@@ -33,7 +33,7 @@ Do not install BetterCamera alongside this camera hook.
 
 Keep existing `ModMenuConfig/exploration_first_person.ini` settings during updates.
 Missing settings use the compiled defaults; the descriptor uses the same defaults.
-Source prototype 0.3.1 adds 180 ms eased manual toggles and optional 100° horizontal first-person FOV.
+Pre-release 0.3.1 adds 180 ms eased manual toggles and optional 100° horizontal first-person FOV.
 Preserve existing settings. Missing transition/FOV keys use the compiled/menu defaults.
 Current baseline: distance −6.35, height −0.15, side 0, fine forward −0.05; RS and keyboard K double-taps.
 Placement uses a stable candidate anchor and a fixed 6-unit reference. Distance range is −7 to −5; combined local offsets are limited to 1.25 units.
@@ -57,4 +57,5 @@ Ask them to test RS toggles outside combat and manual reactivation after combat.
 This is an anchored prototype, not a validated head-bone/eye-collision implementation. Native update/history remain unchanged.
 For 0.3.1, ask the user to test both transition directions, FOV adjustment, native sprint effects, and immediate combat/focus returns.
 Check `Scoped FOV` logs for a matching positioned render camera. FOV failure must not block position transitions.
-Do not publish this prototype as live-tested before the user confirms it.
+Transitions are user-confirmed; the corrected FOV path is not. Do not promote the pre-release until actual FOV changes are confirmed.
+The original installed preview's log contained no successful FOV writes. Do not treat its positive transition feedback as FOV validation.

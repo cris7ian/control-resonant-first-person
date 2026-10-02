@@ -23,7 +23,7 @@ Steam Input must provide an **Xbox layout** for controller input. The mod polls 
 Each release includes `SHA256SUMS.txt`. Compare its ZIP hash with PowerShell output:
 
 ```powershell
-Get-FileHash .\control-resonant-first-person-0.3.0-windows-x64.zip -Algorithm SHA256
+Get-FileHash .\control-resonant-first-person-0.3.1-windows-x64.zip -Algorithm SHA256
 ```
 
 The ZIP also includes `release-manifest.json`, with SHA-256 hashes for its payload files.
@@ -42,7 +42,7 @@ The ZIP also includes `release-manifest.json`, with SHA-256 hashes for its paylo
 
 ## Supported game build
 
-Version 0.3.0 supports the executable named `CONTROLResonant.exe` with this SHA-256:
+Versions 0.3.0 and 0.3.1 support the executable named `CONTROLResonant.exe` with this SHA-256:
 
 ```text
 4f6596b08bb5bc7fe4150cf5b9f71d7bae87eea02d66627c03a5e05ffe84ea62
@@ -56,7 +56,7 @@ Get-FileHash .\CONTROLResonant.exe -Algorithm SHA256
 ```
 
 The native adapter verifies the executable and expected hook signatures before installing hooks.
-Unreleased source prototype 0.3.1 uses the same executable fingerprint; the public release remains 0.3.0.
+Version 0.3.1 is a pre-release with user-confirmed transitions and an experimental FOV correction. Stable 0.3.0 remains available.
 After a game update, an unsupported executable leaves the camera untouched. Do not bypass the compatibility gate.
 
 ## Troubleshooting
@@ -82,12 +82,13 @@ After a game update, an unsupported executable leaves the camera untouched. Do n
 Combat clears first-person intent. A new double-tap after combat is expected, not a failed automatic resume.
 Protected menus and unsupported camera records can also prevent writes.
 
-Source prototype 0.3.1 adds **Camera transition duration** (180 ms default) and **First-person horizontal FOV** (100° default).
+Version 0.3.1 adds **Camera transition duration** (180 ms default) and **First-person horizontal FOV** (100° default).
 Disable **Custom first-person FOV** to retain native FOV without disabling smooth position transitions.
 Set transition duration to `0` for immediate manual toggles. Combat, focus loss, and protected-state returns remain immediate.
 Changing settings clears intent; leave the menu and double-tap again.
 If FOV does not change, inspect `Scoped FOV` logs. Unmatched render cameras retain native FOV, but position transitions remain available.
-Real render matching, native projection execution, and transition feel still require live testing.
+Transition behavior is user-confirmed. The first installed preview applied no custom FOV in the captured session.
+This pre-release fixes an expired stack-query check; the corrected FOV path, native effects, and render matching still need live retesting.
 
 ### The view clips or affects a conversation
 
@@ -114,7 +115,7 @@ Close the game, then edit `crmods/ExplorationFirstPerson/ExplorationFirstPerson.
 camera_writes=0
 ```
 
-Restart the game. This disables the camera hook while retaining input and state diagnostics.
+Restart the game. This disables both position and FOV hooks while retaining input and state diagnostics.
 To restore camera writes, close the game, set the value to `1`, and restart.
 
 ## Remove or roll back

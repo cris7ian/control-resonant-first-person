@@ -2,9 +2,9 @@
 
 Explore CONTROL Resonant in first person. Double-tap the right stick or **K** to switch views. Combat returns you to third person; switch back manually afterward.
 
-**[Download the latest release](https://github.com/cris7ian/control-resonant-first-person/releases/latest)** · **[Report a bug](https://github.com/cris7ian/control-resonant-first-person/issues)**
+**[Download 0.3.1 pre-release](https://github.com/cris7ian/control-resonant-first-person/releases/tag/v0.3.1)** · **[Stable 0.3.0](https://github.com/cris7ian/control-resonant-first-person/releases/tag/v0.3.0)** · **[Report a bug](https://github.com/cris7ian/control-resonant-first-person/issues)**
 
-**Unreleased source prototype 0.3.1** adds fast eased transitions and a first-person horizontal FOV setting. Live testing is pending; the published release remains 0.3.0.
+**0.3.1 pre-release:** fast eased transitions are user-confirmed in live play. The corrected, optional first-person FOV path still needs live retesting.
 
 ## Requirements
 
@@ -21,7 +21,7 @@ Game updates can change compatibility. The mod checks the executable and refuses
 **Close the game before installing or updating.** Do not replace DLLs while it is running.
 
 1. Install CRLoader and CRModMenu using their authors' instructions.
-2. Download `control-resonant-first-person-0.3.0-windows-x64.zip` from [Releases](https://github.com/cris7ian/control-resonant-first-person/releases).
+2. Download `control-resonant-first-person-0.3.1-windows-x64.zip` from [Releases](https://github.com/cris7ian/control-resonant-first-person/releases).
 3. Extract the ZIP into a temporary folder outside the game directory.
 4. In Steam, open the game's **Properties → Installed Files → Browse**.
 5. Copy the extracted `crmods/ExplorationFirstPerson` folder into the game's `crmods` folder.
@@ -63,16 +63,20 @@ Release the button between taps. Complete the second tap within **350 ms**; hold
 - Toggle in exploration and ordinary story areas, including dialogue-capable locations.
 - Combat clears first-person intent. It does **not** automatically resume after combat.
 - Protected menus suspend the camera override. Changing window focus clears first-person intent.
-- Published 0.3.0 retains native field of view (FOV).
-- Source prototype 0.3.1 eases manual toggles over **180 ms**. Set **Camera transition duration** to `0` for instant switches.
-- Its **First-person horizontal FOV** defaults to **100°**. Disable **Custom first-person FOV** to retain native FOV.
-- Combat and safety interruptions remain immediate. FOV matching failures do not disable first-person placement.
+- Manual toggles ease over **180 ms**. Set **Camera transition duration** to `0` for instant switches.
+- **First-person horizontal FOV** defaults to **100°**, with a 60–120° range. This option remains experimental in 0.3.1.
+- Disable **Custom first-person FOV** to retain native field of view (FOV) without disabling eased movement.
+- FOV matching failures retain native FOV and do not disable first-person placement.
+- Combat and safety interruptions remain immediate. Changing settings clears intent; leave the menu and double-tap again.
+- Keep **Diagnostic logging** off during normal play. Enable it briefly to investigate problems.
 
 The default calibration is **distance −6.35, height −0.15, side 0, fine forward −0.05**. Adjust it in the mod menu. Positive fine forward moves the view forward; negative moves it backward. Distance uses a fixed reference, not the current collision-shortened camera boom.
 
 ## Known limitations
 
-This is an early, anchor-based camera mod, not a head-bone camera or a combat first-person overhaul. The 0.3.0 build was confirmed working in live play after wall and story-area testing.
+This is an early, anchor-based camera mod, not a head-bone camera or a combat first-person overhaul. The 0.3.0 placement baseline and 0.3.1 transitions are user-confirmed in live play.
+
+- The first installed 0.3.1 preview retained native FOV because its lifetime check rejected every captured FOV write. This pre-release corrects that check; actual FOV application and native FOV effects still need live confirmation.
 
 - Native camera collision still runs, but there is no separate collision sweep for the final eye position. Wall or body clipping remains possible.
 - The mod does not hide the player's head or body.

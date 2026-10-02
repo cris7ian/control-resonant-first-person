@@ -24,6 +24,14 @@ class RepositoryContractTests(unittest.TestCase):
             value = raw == 'true' if raw in ('true', 'false') else float(raw.rstrip('f'))
             self.assertEqual(option['default'], value, option['id'])
         self.assertEqual(options['version'], package.project_version() + '-preview')
+    def test_documented_zip_examples_match_project_version(self):
+        version = package.project_version()
+        expected = f'control-resonant-first-person-{version}-windows-x64.zip'
+        for name in ('README.md', 'docs/INSTALLATION.md'):
+            text = (ROOT / name).read_text(encoding='utf-8')
+            examples = re.findall(r'control-resonant-first-person-[0-9.]+-windows-x64\.zip', text)
+            self.assertTrue(examples, name)
+            self.assertTrue(all(item == expected for item in examples), name)
     def test_install_is_dry_run_by_default(self):
         self.assertFalse(install.parser().parse_args([]).apply)
     def test_install_skill_is_tracked_source_not_runtime_state(self):

@@ -8,6 +8,7 @@
 namespace {
 int calls{},projection_calls{},setter_calls{};
 float* output{};
+const void* expected_frame{};
 efp::Millis tick=1000;
 bool focused=true,late_safety=false,late_output=false;
 float native_fov=80.0f*std::numbers::pi_v<float>/180.0f;
@@ -21,7 +22,7 @@ std::uintptr_t fake_original(void*,std::uintptr_t a2,std::uintptr_t a3,std::uint
     ++calls;output[9]=0;output[10]=0;output[11]=6;return 12345;
 }
 void fake_projection(void* camera,const void* transform,float* fov,float aspect) {
-    ++projection_calls;check(transform==output,"projection transform argument changed");
+    ++projection_calls;check(transform==expected_frame,"projection transform argument changed");
     check(fov && *fov==0.75f && aspect==1.777f,"mixed pointer/float projection ABI changed");
     auto* bytes=static_cast<unsigned char*>(camera);
     std::memcpy(bytes,&lens_vtable,8);std::memcpy(bytes+0x2cc,&lens_mode,4);
@@ -37,7 +38,8 @@ int main() {
     try {
         auto* records=static_cast<float*>(VirtualAlloc(nullptr,0x1000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));
         auto* lens=static_cast<unsigned char*>(VirtualAlloc(nullptr,0x1000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));
-        check(records && lens,"allocation failed");output=records;
+        auto* other_lens=static_cast<unsigned char*>(VirtualAlloc(nullptr,0x1000,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));
+        check(records && lens && other_lens,"allocation failed");output=records;
         output[6]=0;output[7]=0;output[8]=-1;
         float input[12]{};input[5]=-0.25f;
         alignas(16) unsigned char owner[0x70]{};
@@ -55,8 +57,10 @@ int main() {
             check(efp::camera_detour(owner,2,3,4,5,6,7,8,9,10)==12345 && calls==before+1,"original result/call count changed");
         };
         const auto project=[&] {
+            // The native FOV reader copies its CameraView transform onto the stack before rendering.
+            std::array<float,12> frame{};std::memcpy(frame.data(),output,sizeof(frame));expected_frame=frame.data();
             float fov_input=0.75f;const int before=projection_calls;
-            efp::projection_detour(lens,output,&fov_input,1.777f);
+            efp::projection_detour(lens,frame.data(),&fov_input,1.777f);
             check(projection_calls==before+1 && fov_input==0.75f,"projection forwarding or input FOV changed");
             float result{};std::memcpy(&result,lens+0x2d0,4);return result;
         };
@@ -70,8 +74,16 @@ int main() {
         check(efp::latest_fov_telemetry().matched,"render camera match missing");
         tick+=90;efp::publish_camera_control(true,tick,settings,true);camera();near(output[11],(*target)[2],"entry endpoint changed calibration");
         near(project(),100.0f*std::numbers::pi_v<float>/180,"first-person FOV target");
+        // Native callers pass a temporary stack query, not a persistent owner object.
+        std::array<unsigned char,sizeof(owner)> owner_copy{};
+        std::memcpy(owner_copy.data(),owner,sizeof(owner));std::memset(owner,0,sizeof(owner));
+        near(project(),100.0f*std::numbers::pi_v<float>/180,"expired stack query blocked a live positioned record");
+        std::memcpy(owner,owner_copy.data(),sizeof(owner));
         native_fov=85.0f*std::numbers::pi_v<float>/180;
-        near(project(),105.0f*std::numbers::pi_v<float>/180,"native FOV effect not retained");
+        float other_input=0.75f;const int before_other=projection_calls,before_other_setter=setter_calls;
+        expected_frame=output;efp::projection_detour(other_lens,output,&other_input,1.777f);
+        check(projection_calls==before_other+1 && setter_calls==before_other_setter && other_input==0.75f,"unrelated render forwarding changed");
+        near(project(),105.0f*std::numbers::pi_v<float>/180,"unrelated render reset the entry FOV reference");
         efp::publish_camera_control(false,tick,settings,true);camera();near(output[11],(*target)[2],"manual exit snapped");
         tick+=90;efp::publish_camera_control(false,tick,settings,true);camera();near(output[11],6+((*target)[2]-6)*0.5f,"exit midpoint");
         near(project(),95.0f*std::numbers::pi_v<float>/180,"exit FOV midpoint");
@@ -79,19 +91,39 @@ int main() {
         settings.transition_ms=0;efp::publish_camera_control(true,tick,settings,true);camera();near(output[11],(*target)[2],"instant mode changed placement");
         project();const int setters_before=setter_calls;
         output[9]+=2;near(project(),native_fov,"unmatched camera got FOV override");check(setter_calls==setters_before,"unmatched camera called setter");
-        camera();lens_mode=0;near(project(),native_fov,"nonperspective camera modified");lens_mode=1;
+        camera();
+        efp::PositionedCamera duplicate{};duplicate.address=output_base+0x40;duplicate.observed=tick;
+        duplicate.epoch=efp::control.epoch;duplicate.blend=1;
+        for (unsigned i=0;i<3;++i) { duplicate.position[i]=output[9+i];duplicate.direction[i]=output[6+i]; }
+        efp::publish_position(duplicate);near(project(),native_fov,"ambiguous render match modified FOV");
+        check(std::string(efp::latest_fov_telemetry().reason)=="ambiguous positioned camera","ambiguity was not identified");
+        for (auto& p:efp::positioned) if (p.address==duplicate.address) p={};
+        lens_mode=0;near(project(),native_fov,"nonperspective camera modified");lens_mode=1;
         native_override=1;near(project(),native_fov,"global native override superseded");native_override=0;
         lens_vtable=123;near(project(),native_fov,"unexpected camera type modified");lens_vtable=efp::render_vtable;
-        camera();late_output=true;near(project(),native_fov,"late output change ignored");late_output=false;
+        camera();late_output=true;near(project(),native_fov,"live record changed after native transform copy");late_output=false;
+        check(std::string(efp::latest_fov_telemetry().reason)=="positioned camera changed","live record revalidation not exercised");
+        camera();DWORD previous_protection{};
+        check(VirtualProtect(records,0x1000,PAGE_READONLY,&previous_protection)!=0,"record protection failed");
+        near(project(),native_fov,"nonwritable live record got FOV override");
+        check(VirtualProtect(records,0x1000,previous_protection,&previous_protection)!=0,"record protection restore failed");
+        tick+=101;near(project(),native_fov,"stale positioned record got FOV override");
+        efp::publish_camera_control(true,tick,settings,true);
         camera();late_safety=true;near(project(),native_fov,"late safety interruption ignored");late_safety=false;
         efp::publish_camera_control(true,tick,settings,true);camera();focused=false;near(project(),native_fov,"focus loss did not restore native FOV");
         camera();near(output[11],6,"focus loss eased instead of restoring native output");focused=true;
         mode=1;camera();near(output[11],6,"protected native mode wrote position");near(project(),native_fov,"protected mode wrote FOV");mode=0;
         efp::publish_camera_control(false,tick,settings,false);camera();near(output[11],6,"safety rollback wrote position");near(project(),native_fov,"safety rollback wrote FOV");
+        native_fov=100.0f*std::numbers::pi_v<float>/180;
+        efp::publish_camera_control(true,tick,settings,true);camera();
+        const int before_noop=setter_calls;near(project(),native_fov,"equal native/requested FOV changed");
+        check(setter_calls==before_noop && efp::latest_fov_telemetry().matched,"no-op FOV rebuilt the projection or lost the match");
+        native_fov=105.0f*std::numbers::pi_v<float>/180;near(project(),native_fov,"native effect changed with zero FOV offset");
+        check(setter_calls==before_noop,"zero FOV offset rebuilt the projection");
         settings.first_person_fov_enabled=false;efp::publish_camera_control(true,tick,settings,true);camera();near(output[11],(*target)[2],"disabled FOV blocked position");near(project(),native_fov,"disabled FOV wrote lens");
         input[5]=100;camera();check(!efp::latest_camera_telemetry().anchor_valid && efp::last_valid_record.load()==0,"invalid anchor retained eligibility");near(output[11],6,"invalid anchor wrote position");input[5]=-0.25f;
         tick+=151;camera();near(output[11],6,"stale control wrote position");near(project(),native_fov,"stale control wrote FOV");
-        VirtualFree(lens,0,MEM_RELEASE);VirtualFree(records,0,MEM_RELEASE);
+        VirtualFree(other_lens,0,MEM_RELEASE);VirtualFree(lens,0,MEM_RELEASE);VirtualFree(records,0,MEM_RELEASE);
         std::cout << "Original forwarding, eased position/FOV, native effects, matching, independent FOV rejection and immediate safety rollback passed.\n";
     } catch (const std::exception& e) { std::cerr<<e.what()<<'\n';return 1; }
 }

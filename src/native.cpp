@@ -61,6 +61,17 @@ std::string camera_geometry(const efp::CameraTelemetry& sample) {
     vector("native", sample.native_position); vector("requested", sample.requested_position); vector("axis", sample.direction);
     return text.str();
 }
+std::string fov_geometry(const efp::FovTelemetry& sample, const char* prefix) {
+    std::ostringstream text;
+    text << prefix << sample.reason;
+    // Rejected frames have no measured lens values. Do not report their zero-initialized fields as angles.
+    if (sample.matched) {
+        text << std::fixed << std::setprecision(3)
+             << "; native_hfov=" << sample.native_degrees << "; output_hfov=" << sample.output_degrees
+             << "; blend=" << sample.blend << "; setter=" << (sample.applied ? "applied" : "not needed");
+    }
+    return text.str();
+}
 using GetState = DWORD (WINAPI*)(DWORD, XINPUT_STATE*);
 GetState load_xinput() {
     // Absolute system path prevents loading an unrelated local XInput DLL.
@@ -185,8 +196,7 @@ DWORD WINAPI run(void*) {
                 const auto fov=efp::latest_fov_telemetry();
                 if (fov.observed && now>=fov.observed && now-fov.observed<=200 && last_fov_reason!=fov.reason) {
                     last_fov_reason=fov.reason;
-                    log(std::string("Scoped FOV: ")+fov.reason+"; native_hfov="+std::to_string(fov.native_degrees)+
-                        "; output_hfov="+std::to_string(fov.output_degrees)+"; blend="+std::to_string(fov.blend));
+                    log(fov_geometry(fov, "Scoped FOV: "));
                 }
             }
             if (settings.debug && now - last_geometry >= 500) {
@@ -197,8 +207,7 @@ DWORD WINAPI run(void*) {
                     log(camera_geometry(sample));
                     const auto fov=efp::latest_fov_telemetry();
                     if (fov.observed && now>=fov.observed && now-fov.observed<=200)
-                        log(std::string("FOV GEOMETRY: ")+fov.reason+"; native_hfov="+std::to_string(fov.native_degrees)+
-                            "; output_hfov="+std::to_string(fov.output_degrees)+"; blend="+std::to_string(fov.blend));
+                        log(fov_geometry(fov, "FOV GEOMETRY: "));
                 }
             }
             const int mode = adapter.camera_mode();

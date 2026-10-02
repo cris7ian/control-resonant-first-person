@@ -10,7 +10,10 @@ Do not restore obsolete implementation plans, research dumps, or unused runtime 
 
 - Run the original native functions first. Preserve their arguments, return values, and collision history.
 - Only change the validated final camera position and the matched scratch render camera's FOV through its native setter. Never change global collision, global FOV overrides, or visibility.
-- Keep FOV failure independent from position eligibility. Require exact signatures, render-camera identity, perspective lens, and a fresh matching positioned record.
+- Keep FOV failure independent from position eligibility. Require exact signatures, render-camera identity, perspective lens, and one unambiguous fresh matching positioned record.
+- Do not cache the camera hook's owner/query pointer for later callbacks: native callers construct it on the stack. Revalidate the actual output record at render time.
+- Unrelated render-camera calls must not clear the gameplay camera's FOV reference or telemetry. Key FOV calibration by control epoch and output-record address.
+- The original projection builder restores native FOV each call. Compare against current native FOV for no-op optimization, never against the previous frame's modified FOV.
 - Ease manual toggles only. Combat, focus loss, protected states, and other safety interruptions restore native output immediately.
 - Place the camera from the matched input anchor. Never fall back to collision-shortened output offsets.
 - Preserve executable fingerprint, hook-signature, record, freshness, focus, and state gates. Fail closed on uncertainty.
@@ -53,5 +56,7 @@ The repository installation skill is .pi/skills/install-control-resonant/SKILL.m
 - Keep CMake, menu descriptor, release tag, and artifact versions consistent.
 - Do not remove third-party copyright or license notices.
 - Do not select or change the project's own license without the owner's approval.
-- Verify before publishing. Do not rewrite published history or force-push without explicit approval.
+- Verify before publishing. Review the newest live logs before clearing them; archive them under ignored analysis/ with the game closed.
+- User-confirmed transitions do not establish FOV application. A release with corrected, unconfirmed native behavior must state that limitation and remain a pre-release.
+- Keep main at the stable release while publishing experimental feature-branch tags. Do not rewrite published history or force-push without explicit approval.
 - Do not add co-author trailers, bot signatures, or authorship attribution to Git metadata.

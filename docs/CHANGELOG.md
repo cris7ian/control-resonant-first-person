@@ -1,6 +1,6 @@
 # Change history
 
-## 0.3.1 — unreleased transition/FOV prototype
+## 0.3.1 — transitions and experimental FOV pre-release
 
 - Retain the live-tested 0.3.0 anchor placement and input/state gates. Do not use the archived 0.4.x player/physics decoder.
 - Add 180 ms manual entry/exit transitions using quintic easing, current native/anchored endpoints, and continuous-position reversals. Expose duration from 0–500 ms.
@@ -8,7 +8,13 @@
 - Add optional first-person horizontal FOV, default 100°, range 60–120°. Preserve native FOV changes after entry as additive offsets.
 - Run the native projection builder unchanged first. Use the native matrix-rebuilding setter only on its validated scratch camera matching a fresh positioned record.
 - Keep FOV rejection independent from position eligibility; do not change global FOV tweaks, CameraView FOV, or visibility.
-- Add transition, configuration, mixed-ABI forwarding, render matching, native FOV effect, and safety regressions. Live testing remains pending.
+- Confirm eased transitions through user live testing. Captured logs show the first installed preview applied no custom FOV.
+- Fix a render-stage check that reread an expired native stack query. Revalidate the positioned output record instead; keep the scratch-camera, lens, record-content, freshness, and safety gates.
+- Reject ambiguous render matches. Preserve the entry FOV reference across unrelated render-camera calls and reset it when the matched output record changes.
+- Skip the second native projection rebuild when output FOV equals current native FOV. Never skip required writes based on the previous frame's output.
+- Add regressions for expired queries, unrelated cameras, ambiguity, no-op FOV, forwarding, native effects, and immediate safety restoration.
+- Do not log unmeasured FOV as zero degrees on rejected frames. Add a documentation ZIP-version regression and native lifetime guidance in AGENTS.md.
+- Publish as a pre-release because the corrected FOV path still needs live retesting. Stable 0.3.0 remains unchanged.
 
 ## 0.3.0 — first public release
 
