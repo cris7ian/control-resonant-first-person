@@ -28,7 +28,8 @@ The 0.3.0 geometry replay passed all 123 captured wall-test samples. The user th
 Neither result proves complete camera ownership, eye collision, dialogue exclusion, or every combat transition.
 
 For camera changes, test a wall behind the player, walking, pitching, stairs, both toggle directions, story areas, active conversation, combat rollback, and focus loss.
-Keep native FOV while testing placement. Do not claim all these cases passed solely because automated checks pass.
+Published 0.3.0 retains native FOV. Source prototype 0.3.1 adds independently gated render FOV and eased transitions; live validation is pending.
+Do not claim transition feel, real projection execution, render matching, or sprint/conversation coverage passed solely because automated checks pass.
 
 ## Implementation map
 
@@ -38,6 +39,7 @@ Keep native FOV while testing placement. Do not claim all these cases passed sol
 | `src/state_snapshot.*`, `src/state_observer.*` | Bounded coherent UI-stack decoding and original-first observation |
 | `src/game_adapter.*` | Exact executable/signature gates, camera mode, and state freshness |
 | `src/camera_geometry.*` | Anchored placement and local displacement validation |
+| `src/camera_transition.*` | Time-based quintic blend and manual-transition eligibility |
 | `src/camera_override.*` | Original-first camera hook, record checks, final position writes, telemetry |
 | `src/native.cpp` | DLL lifecycle, XInput worker, stable configuration reads, and logging |
 | `assets/` | Default safety INI, menu descriptor, and pinned local dependency metadata |
@@ -51,7 +53,8 @@ The full native camera ABI and exclusive player-camera ownership remain provisio
 
 The hook forwards ten observed integer/pointer argument slots and preserves the original return value.
 It runs the native update first, including native collision/history, then writes only 12 bytes of final output position.
-It does not change direction, projection/FOV, visibility, native camera history, or global collision settings.
+It does not change direction, visibility, native camera history, or global collision settings.
+Published 0.3.0 leaves FOV unchanged. Source 0.3.1 adds an independent original-first render projection hook; it never writes CameraView FOV or global tweaks.
 
 Placement uses a validated, matched input0 record. It is a stable player-following candidate, not a proven head attachment.
 The input/output indices, input pointer, coordinate plausibility, direction, private writable output, freshness, foreground, and native mode are checked.
@@ -72,6 +75,40 @@ Inherited stack activity follows case-insensitive parent dependencies with cycle
 Combat clears intent; protected states suspend it; focus loss clears it. Dialogue retaining `story` and mode 0 remains ambiguous.
 
 Defaults and menu reset values must agree: distance −6.35, height −0.15, side 0, fine forward −0.05; RS and keyboard K.
+
+## Manual transitions and scoped FOV (0.3.1 source prototype)
+
+Keep 0.3.0 placement and state detection. The archived 0.4.x ECS/ancestry/physics reader is not used.
+The worker publishes a coherent settings/state/blend snapshot every input poll. Default duration is 180 ms; range is 0–500 ms.
+Quintic easing uses `6t^5 - 15t^4 + 10t^3`, with zero velocity and acceleration at the endpoints.
+A reversal starts at the current blend and scales duration by remaining distance. Position stays continuous; reversal velocity is not guaranteed continuous.
+Blend each frame's current native output and current anchored endpoint. Do not freeze either endpoint in world space.
+Manual exit eases out only while exploration remains eligible. Combat, focus loss, protected states, disabled settings, and stale/invalid data leave native output immediately.
+Transition positions lie on the segment between the native camera and the bounded eye target; the intermediate segment is not limited to the target's 1.25-unit local budget.
+No new eye collision or clipping guarantee is introduced.
+
+The native render builder at RVA `0x1BD5660` takes `(camera, transform, float* fov, float aspect)` in RCX/RDX/R8/XMM3.
+Call it unchanged first, once. Its caller at `0x1BD5240` uses scratch camera RVA `0x5D047C0`.
+Validate that exact camera, writable lens storage, native vtable RVA `0x4835370`, perspective mode `+0x2CC == 1`, horizontal FOV `+0x2D0`, and aspect `+0x2D4`.
+The getter at `0x3228290` computes vertical FOV as `2*atan(tan(horizontalFov/2)/aspect)`; native lens angles use radians.
+Signature-check both builder and setter before installing the FOV hook. FOV hook rejection must not reject the existing position hook.
+
+Match transform direction/position to one of eight recent successfully positioned records, within 0.0001 units and 100 ms.
+Require the current control epoch and revalidate the live owner/output address, direction, position, focus, freshness, and native mode.
+This is a render-record correlation gate, not a new proof of exclusive player ownership. Ambiguous/native sequences still need live coverage.
+FOV rejection leaves the native projection intact and does not invalidate position eligibility.
+
+The optional horizontal first-person FOV defaults to 100 degrees, range 60–120. Capture native FOV on the first matched entry frame.
+Apply `nativeFov + (requestedEntryFov - entryNativeFov) * positionedBlend` using native setter RVA `0x3228200`.
+The setter receives its float in XMM1, updates `+0x2D0`, and calls the native projection rebuild at `0x3228DD0`.
+Never hand-edit matrices or change input FOV, global override byte `0x5D04F90`, or shared game camera components.
+Respect an active native global override by leaving FOV untouched. Preserve native lens/aspect parameters and native effects computed before the setter.
+Native FOV changes after entry remain additive. Activating during a native FOV effect includes that effect in the captured entry reference.
+At completed exit or safety interruption, the next original render build supplies native FOV again. No persistent game FOV value needs restoration.
+
+Change-only `Scoped FOV` logs report matching/rejection even without debug. Optional geometry includes native/output FOV and blend at most twice per second.
+Owned-record tests check the mixed ABI, matched/unmatched render records, native FOV deltas, unchanged input FOV, disabled FOV independence, and safety returns.
+These mocks and static evidence are not live validation. Keep this prototype off the public release until tested.
 
 ## Reversible local installation
 

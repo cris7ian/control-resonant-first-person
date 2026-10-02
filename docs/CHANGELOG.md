@@ -1,5 +1,15 @@
 # Change history
 
+## 0.3.1 — unreleased transition/FOV prototype
+
+- Retain the live-tested 0.3.0 anchor placement and input/state gates. Do not use the archived 0.4.x player/physics decoder.
+- Add 180 ms manual entry/exit transitions using quintic easing, current native/anchored endpoints, and continuous-position reversals. Expose duration from 0–500 ms.
+- Keep combat, protected-state, focus, disabled-mod, invalid-record, and stale-control returns immediate.
+- Add optional first-person horizontal FOV, default 100°, range 60–120°. Preserve native FOV changes after entry as additive offsets.
+- Run the native projection builder unchanged first. Use the native matrix-rebuilding setter only on its validated scratch camera matching a fresh positioned record.
+- Keep FOV rejection independent from position eligibility; do not change global FOV tweaks, CameraView FOV, or visibility.
+- Add transition, configuration, mixed-ABI forwarding, render matching, native FOV effect, and safety regressions. Live testing remains pending.
+
 ## 0.3.0 — first public release
 
 - Confirm working anchored placement and story-area toggles through user live testing.

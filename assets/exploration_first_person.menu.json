@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "exploration_first_person",
   "name": "Exploration First Person (Prototype)",
-  "version": "0.3.0-preview",
+  "version": "0.3.1-preview",
   "dll": "ExplorationFirstPerson.dll",
   "options": [
     {"id":"enabled","type":"toggle","label":"Enabled","default":true,"description":"Double-tap RS in exploration or dialogue-capable story areas to toggle the experimental anchored camera. Double-tap again to return.\n\nCombat/protected states return to the original camera. Normal exploration and non-nested story states are permitted. Detected dialogue/cutscene states and non-gameplay camera modes remain blocked. Story-versus-active-dialogue coverage, eye collision and body visibility still need testing."},
@@ -10,11 +10,14 @@
     {"id":"prototype_distance","type":"slider","label":"Anchor distance calibration (m)","default":-6.35,"min":-7,"max":-5,"step":0.05,"description":"Uses a fixed 6-unit reference relative to the player-following anchor, not the retracted third-person camera. More negative moves forward. Your calibrated default is -6.35.\n\nOffset combinations are limited to a 1.25-unit local budget. Invalid settings keep the previous calibration. Eye collision and exact head placement still need testing."},
     {"id":"eye_height","type":"slider","label":"Camera height offset (m)","default":-0.15,"min":-0.5,"max":0.5,"step":0.05,"description":"Raises or lowers the close camera. Character visibility is not yet modified."},
     {"id":"eye_side","type":"slider","label":"Camera side offset (m)","default":0,"min":-1,"max":1,"step":0.05,"description":"Adjusts left/right placement. Tune it together with distance. The correct eye position depends on the native camera."},
-    {"id":"eye_forward","type":"slider","label":"Fine forward offset (m)","default":-0.05,"min":-0.3,"max":0.3,"step":0.05,"description":"Positive values move the close camera farther forward. Prototype switches are immediate."},
+    {"id":"eye_forward","type":"slider","label":"Fine forward offset (m)","default":-0.05,"min":-0.3,"max":0.3,"step":0.05,"description":"Positive values move the close camera farther forward. Manual toggles use the configured eased transition."},
+    {"id":"transition_ms","type":"slider","label":"Camera transition duration (ms)","default":180,"min":0,"max":500,"step":10,"description":"Fast eased movement and FOV transition on manual toggles. Default 180 ms. Set 0 for an immediate switch. Combat, protected states, focus loss and safety failures restore native output immediately."},
+    {"id":"first_person_fov_enabled","type":"toggle","label":"Custom first-person FOV","default":true,"description":"Apply a scoped FOV offset only to a render camera matching our positioned camera. Disable to keep native FOV while retaining smooth position transitions. No global FOV override."},
+    {"id":"first_person_fov","type":"slider","label":"First-person horizontal FOV (degrees)","default":100,"min":60,"max":120,"step":1,"description":"Horizontal FOV target at entry, not vertical FOV. Native FOV changes after entry remain additive. Manual exit eases back to current native FOV. Changes to settings clear intent; toggle again after leaving the menu. Live render-camera matching remains unvalidated."},
     {"id":"keyboard_key","type":"key","device":"keyboard","context":"gameplay","conflict":"warn","label":"Keyboard fallback (double-tap)","default":75,"description":"Double-tap K by default. Set Unbound to use only the controller."},
     {"id":"double_tap_ms","type":"slider","label":"Double-tap window (ms)","default":350,"min":150,"max":800,"step":10,"description":"Maximum time between completed clicks."},
     {"id":"max_tap_ms","type":"slider","label":"Maximum click duration (ms)","default":250,"min":50,"max":500,"step":10,"description":"Longer holds do not count as clicks."},
     {"id":"min_gap_ms","type":"slider","label":"Minimum click gap (ms)","default":40,"min":10,"max":100,"step":10,"description":"Rejects button bounce between clicks."},
-    {"id":"debug","type":"toggle","label":"Diagnostic logging","default":false,"description":"Adds read-only camera input/output geometry and position-write results, up to twice per second. Use for free-space versus wall-behind-player tests. It does not disable collision or change FOV. State and gesture logs remain available when off."}
+    {"id":"debug","type":"toggle","label":"Diagnostic logging","default":false,"description":"Adds read-only camera input/output geometry and position-write results, up to twice per second. Use for free-space versus wall-behind-player tests. Includes transition blend and scoped native/output FOV results. Logging does not disable collision. State, gesture and change-only FOV status logs remain available when off."}
   ]
 }

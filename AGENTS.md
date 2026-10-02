@@ -9,7 +9,9 @@ Do not restore obsolete implementation plans, research dumps, or unused runtime 
 ## Camera and input invariants
 
 - Run the original native functions first. Preserve their arguments, return values, and collision history.
-- Only change the validated final camera position. Do not globally disable collision or change FOV or visibility.
+- Only change the validated final camera position and the matched scratch render camera's FOV through its native setter. Never change global collision, global FOV overrides, or visibility.
+- Keep FOV failure independent from position eligibility. Require exact signatures, render-camera identity, perspective lens, and a fresh matching positioned record.
+- Ease manual toggles only. Combat, focus loss, protected states, and other safety interruptions restore native output immediately.
 - Place the camera from the matched input anchor. Never fall back to collision-shortened output offsets.
 - Preserve executable fingerprint, hook-signature, record, freshness, focus, and state gates. Fail closed on uncertainty.
 - Treat input0 as a player-following candidate, not proven head ownership or exclusive camera ownership.

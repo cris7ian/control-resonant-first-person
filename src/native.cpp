@@ -2,6 +2,7 @@
 #include "game_adapter.hpp"
 #include "state_observer.hpp"
 #include "camera_override.hpp"
+#include "camera_transition.hpp"
 #include <windows.h>
 #include <xinput.h>
 #include <array>
@@ -47,6 +48,7 @@ std::string camera_geometry(const efp::CameraTelemetry& sample) {
     text << "CAMERA GEOMETRY: record=" << sample.record_index
          << "; write=" << (sample.write_attempted ? (sample.write_ok ? "ok" : "failed") : "inactive")
          << "; write_bytes=" << sample.write_bytes
+         << "; first_person_blend=" << sample.first_person_blend
          << "; anchor_valid=" << (sample.anchor_valid ? "yes" : "no")
          << "; anchor_used=" << (sample.anchor_used ? "yes" : "no")
          << "; input_before=" << (sample.input_before_readable ? "readable" : "unavailable")
@@ -114,7 +116,8 @@ DWORD WINAPI run(void*) {
         bool last_focus = false;
         bool last_camera_active = false;
         auto last_state = efp::GameState::unknown;
-        std::string last_stack_summary;
+        std::string last_stack_summary, last_fov_reason;
+        efp::Millis last_fov_log{};
         std::uintptr_t last_environment = 0;
         for (;;) {
             const auto now = GetTickCount64();
@@ -152,7 +155,7 @@ DWORD WINAPI run(void*) {
             context.foreground = focused;
             context.controller_connected = selected >= 0 || settings.keyboard_key != 0;
             const bool camera_active = policy.update(now, button, context);
-            efp::publish_camera_control(camera_active, context.state_observed, settings);
+            efp::publish_camera_control(camera_active, context.state_observed, settings, efp::camera_transition_allowed(settings,context));
             if (camera_active != last_camera_active) {
                 last_camera_active = camera_active;
                 log(camera_active ? "CAMERA PREVIEW ON (double-tap)." : "CAMERA PREVIEW OFF (manual toggle or safety/combat rollback).");
@@ -177,12 +180,25 @@ DWORD WINAPI run(void*) {
                         "; camera_record=" + (context.camera_valid ? "eligible" : "unavailable") + "; preview=" + (camera_active ? "on" : "off"));
                 }
             } else diagnostic_taps.reset();
+            if (now-last_fov_log>=500) {
+                last_fov_log=now;
+                const auto fov=efp::latest_fov_telemetry();
+                if (fov.observed && now>=fov.observed && now-fov.observed<=200 && last_fov_reason!=fov.reason) {
+                    last_fov_reason=fov.reason;
+                    log(std::string("Scoped FOV: ")+fov.reason+"; native_hfov="+std::to_string(fov.native_degrees)+
+                        "; output_hfov="+std::to_string(fov.output_degrees)+"; blend="+std::to_string(fov.blend));
+                }
+            }
             if (settings.debug && now - last_geometry >= 500) {
                 last_geometry = now;
                 const auto sample = efp::latest_camera_telemetry();
                 if (sample.observed && sample.observed != last_geometry_observed && now >= sample.observed && now - sample.observed <= 200) {
                     last_geometry_observed = sample.observed;
                     log(camera_geometry(sample));
+                    const auto fov=efp::latest_fov_telemetry();
+                    if (fov.observed && now>=fov.observed && now-fov.observed<=200)
+                        log(std::string("FOV GEOMETRY: ")+fov.reason+"; native_hfov="+std::to_string(fov.native_degrees)+
+                            "; output_hfov="+std::to_string(fov.output_degrees)+"; blend="+std::to_string(fov.blend));
                 }
             }
             const int mode = adapter.camera_mode();

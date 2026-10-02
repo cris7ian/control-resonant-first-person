@@ -39,6 +39,7 @@ bool valid(const Settings& s) {
         std::isfinite(s.eye_height) && s.eye_height >= -0.5f && s.eye_height <= 0.5f &&
         std::isfinite(s.eye_forward) && s.eye_forward >= -0.3f && s.eye_forward <= 0.3f &&
         std::isfinite(s.transition_ms) && s.transition_ms >= 0 && s.transition_ms <= 500 &&
+        std::isfinite(s.first_person_fov) && s.first_person_fov >= 60 && s.first_person_fov <= 120 &&
         std::abs(reference_boom + s.prototype_distance - s.eye_forward) +
         std::abs(reference_height + s.eye_height) + std::abs(reference_side + s.eye_side) <= max_eye_displacement + 0.00001f;
 }
@@ -66,9 +67,11 @@ std::optional<Settings> parse_settings(std::string_view ini, const Settings& bas
         const auto text = trim(line.substr(equals + 1));
         if (key.empty() || text.empty() || !seen.insert(std::string(key)).second) return {};
         const auto i = integer(text);
-        if (key == "enabled" || key == "debug") {
+        if (key == "enabled" || key == "debug" || key == "first_person_fov_enabled") {
             if (!i || (*i != 0 && *i != 1)) return {};
-            (key == "enabled" ? result.enabled : result.debug) = *i != 0;
+            if (key=="enabled") result.enabled=*i!=0;
+            else if (key=="debug") result.debug=*i!=0;
+            else result.first_person_fov_enabled=*i!=0;
         } else if (key == "pad_button" || key == "keyboard_key") {
             if (!i) return {};
             (key == "pad_button" ? result.pad_button : result.keyboard_key) = *i;
@@ -77,14 +80,15 @@ std::optional<Settings> parse_settings(std::string_view ini, const Settings& bas
             if (key == "double_tap_ms") result.double_tap_ms = static_cast<Millis>(*i);
             else if (key == "max_tap_ms") result.max_tap_ms = static_cast<Millis>(*i);
             else result.min_gap_ms = static_cast<Millis>(*i);
-        } else if (key == "prototype_distance" || key == "eye_height" || key == "eye_forward" || key == "eye_side" || key == "transition_ms") {
+        } else if (key == "prototype_distance" || key == "eye_height" || key == "eye_forward" || key == "eye_side" || key == "transition_ms" || key == "first_person_fov") {
             const auto f = number(text);
             if (!f) return {};
             if (key == "prototype_distance") result.prototype_distance = *f;
             else if (key == "eye_height") result.eye_height = *f;
             else if (key == "eye_forward") result.eye_forward = *f;
             else if (key == "eye_side") result.eye_side = *f;
-            else result.transition_ms = *f;
+            else if (key=="transition_ms") result.transition_ms = *f;
+            else result.first_person_fov = *f;
         }
     }
     // A partial/missing section must not reset current settings.

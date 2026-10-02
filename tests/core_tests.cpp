@@ -1,6 +1,7 @@
 #include "core.hpp"
 #include "state_snapshot.hpp"
 #include "camera_geometry.hpp"
+#include "camera_transition.hpp"
 #include <cmath>
 #include <array>
 #include <cstring>
@@ -226,8 +227,45 @@ void snapshot_tests() {
     CHECK(!heap_mixed.readable); // stable heap pointer/metadata, changed string contents
     auto absent = StateSnapshot{}; CHECK(diagnostic_state(absent, 0) == GameState::unknown);
 }
+void transition_tests() {
+    CameraTransition t;
+    CHECK(t.update(1000,true,180)==0);
+    CHECK(std::abs(t.update(1090,true,180)-0.5f)<0.000001f);
+    CHECK(t.update(1180,true,180)==1);
+    CHECK(t.update(1200,false,180)==1);
+    CHECK(std::abs(t.update(1290,false,180)-0.5f)<0.000001f);
+    CHECK(t.update(1380,false,180)==0);
+    t.reset();CHECK(t.update(1000,true,180)==0);
+    const auto halfway=t.update(1090,true,180);
+    CHECK(t.update(1090,false,180)==halfway);CHECK(t.update(1180,false,180)==0);
+    t.reset();CHECK(t.update(2000,true,0)==1);CHECK(t.update(2000,false,0)==0);
+    CHECK(t.update(1999,true,180)==0); // clock regression cannot reuse a stale blend
+    CHECK(t.update(2200,true,std::numeric_limits<float>::quiet_NaN())==0);
+    for (Millis frame : {8ULL,16ULL,33ULL}) {
+        t.reset();t.update(1000,true,180);float previous=0;
+        for (Millis now=1000;now<=1210;now+=frame) { const float value=t.update(now,true,180);CHECK(value>=previous && value<=1);previous=value; }
+        CHECK(t.update(1210,true,180)==1);
+    }
+    auto c=exploring();CHECK(camera_transition_allowed(Settings{},c));
+    for (int i=0;i<7;++i) {
+        c=exploring();auto s=Settings{};
+        if (i==0)c.state=GameState::combat;
+        if (i==1)c.state=GameState::protected_camera;
+        if (i==2)c.state_fresh=false;
+        if (i==3)c.camera_valid=false;
+        if (i==4)c.foreground=false;
+        if (i==5)c.controller_connected=false;
+        if (i==6)s.enabled=false;
+        CHECK(!camera_transition_allowed(s,c));
+    }
+}
 void config_tests() {
     CHECK(valid(Settings{}));
+    CHECK(parse_settings("[Settings]\ntransition_ms=0\nfirst_person_fov=110\nfirst_person_fov_enabled=0")->first_person_fov==110);
+    CHECK(!parse_settings("[Settings]\ntransition_ms=501"));
+    CHECK(!parse_settings("[Settings]\nfirst_person_fov=59"));
+    CHECK(!parse_settings("[Settings]\nfirst_person_fov=121"));
+    CHECK(!parse_settings("[Settings]\nfirst_person_fov_enabled=2"));
     auto s = parse_settings("[Settings]\nenabled=1\npad_button=267\ndouble_tap_ms=400\neye_height=0.05\n");
     CHECK(s.has_value()); CHECK(s->double_tap_ms == 400); CHECK(s->eye_height == 0.05f);
     CHECK(!parse_settings("")); CHECK(!parse_settings("[Settings]\n"));
@@ -258,7 +296,7 @@ void config_tests() {
 }
 }
 int main() {
-    try { detector_tests(); policy_tests(); config_tests(); snapshot_tests(); geometry_tests(); }
+    try { detector_tests(); policy_tests(); config_tests(); snapshot_tests(); geometry_tests(); transition_tests(); }
     catch (const std::exception& e) { std::cerr << e.what() << '\n'; return EXIT_FAILURE; }
     std::cout << checks << " checks passed\n";
 }

@@ -19,6 +19,8 @@ struct Settings {
     float eye_forward = -0.05f;
     float eye_side = 0.0f;
     float transition_ms = 180.0f;
+    float first_person_fov = 100.0f; // horizontal degrees; native changes remain additive
+    bool first_person_fov_enabled = true;
     bool debug = false;
     bool operator==(const Settings&) const = default;
 };

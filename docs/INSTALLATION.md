@@ -56,6 +56,7 @@ Get-FileHash .\CONTROLResonant.exe -Algorithm SHA256
 ```
 
 The native adapter verifies the executable and expected hook signatures before installing hooks.
+Unreleased source prototype 0.3.1 uses the same executable fingerprint; the public release remains 0.3.0.
 After a game update, an unsupported executable leaves the camera untouched. Do not bypass the compatibility gate.
 
 ## Troubleshooting
@@ -80,6 +81,13 @@ After a game update, an unsupported executable leaves the camera untouched. Do n
 
 Combat clears first-person intent. A new double-tap after combat is expected, not a failed automatic resume.
 Protected menus and unsupported camera records can also prevent writes.
+
+Source prototype 0.3.1 adds **Camera transition duration** (180 ms default) and **First-person horizontal FOV** (100° default).
+Disable **Custom first-person FOV** to retain native FOV without disabling smooth position transitions.
+Set transition duration to `0` for immediate manual toggles. Combat, focus loss, and protected-state returns remain immediate.
+Changing settings clears intent; leave the menu and double-tap again.
+If FOV does not change, inspect `Scoped FOV` logs. Unmatched render cameras retain native FOV, but position transitions remain available.
+Real render matching, native projection execution, and transition feel still require live testing.
 
 ### The view clips or affects a conversation
 

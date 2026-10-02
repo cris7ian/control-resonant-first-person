@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
-project(ExplorationFirstPerson VERSION 0.3.0 LANGUAGES C CXX)
+project(ExplorationFirstPerson VERSION 0.3.1 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_library(efp_core STATIC src/core.cpp src/state_snapshot.cpp src/camera_geometry.cpp)
+add_library(efp_core STATIC src/core.cpp src/state_snapshot.cpp src/camera_geometry.cpp src/camera_transition.cpp)
 target_include_directories(efp_core PUBLIC src)
 if(MSVC)
   target_compile_options(efp_core PRIVATE /W4)

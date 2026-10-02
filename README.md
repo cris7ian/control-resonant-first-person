@@ -4,6 +4,8 @@ Explore CONTROL Resonant in first person. Double-tap the right stick or **K** to
 
 **[Download the latest release](https://github.com/cris7ian/control-resonant-first-person/releases/latest)** · **[Report a bug](https://github.com/cris7ian/control-resonant-first-person/issues)**
 
+**Unreleased source prototype 0.3.1** adds fast eased transitions and a first-person horizontal FOV setting. Live testing is pending; the published release remains 0.3.0.
+
 ## Requirements
 
 - Windows x64 and the supported Steam build of CONTROL Resonant.
@@ -61,7 +63,10 @@ Release the button between taps. Complete the second tap within **350 ms**; hold
 - Toggle in exploration and ordinary story areas, including dialogue-capable locations.
 - Combat clears first-person intent. It does **not** automatically resume after combat.
 - Protected menus suspend the camera override. Changing window focus clears first-person intent.
-- Native field of view (FOV) remains unchanged.
+- Published 0.3.0 retains native field of view (FOV).
+- Source prototype 0.3.1 eases manual toggles over **180 ms**. Set **Camera transition duration** to `0` for instant switches.
+- Its **First-person horizontal FOV** defaults to **100°**. Disable **Custom first-person FOV** to retain native FOV.
+- Combat and safety interruptions remain immediate. FOV matching failures do not disable first-person placement.
 
 The default calibration is **distance −6.35, height −0.15, side 0, fine forward −0.05**. Adjust it in the mod menu. Positive fine forward moves the view forward; negative moves it backward. Distance uses a fixed reference, not the current collision-shortened camera boom.
 
