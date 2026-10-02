@@ -53,6 +53,7 @@ The repository installation skill is .pi/skills/install-control-resonant/SKILL.m
 
 - Use scripts/release.py for public artifacts. scripts/package.py is for local dependency-inclusive installation only.
 - Public ZIPs must contain only this mod, documentation, and required third-party notices.
+- Check real stripped artifacts, unchanged runtime sections, and repeat ZIP identity across different seconds. GNU strip needs SOURCE_DATE_EPOCH to preserve the input PE timestamp.
 - Keep CMake, menu descriptor, release tag, and artifact versions consistent.
 - Do not remove third-party copyright or license notices.
 - Do not select or change the project's own license without the owner's approval.

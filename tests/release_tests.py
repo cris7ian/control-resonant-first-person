@@ -90,6 +90,14 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(second.read_bytes()).hexdigest(), fingerprint)
         self.assertEqual((self.build / 'ExplorationFirstPerson.dll').read_bytes(), original)
 
+    def test_strip_preserves_input_pe_timestamp(self):
+        native = bytearray(fake_dll())
+        struct.pack_into('<I', native, 0x88, 1234567890)
+        (self.build / 'ExplorationFirstPerson.dll').write_bytes(native)
+        self.make()
+        environment = release.subprocess.run.call_args.kwargs['env']
+        self.assertEqual(environment['SOURCE_DATE_EPOCH'], '1234567890')
+
     def test_non_x64_binary_rejected(self):
         (self.build / 'ExplorationFirstPerson.dll').write_bytes(fake_dll(machine=0x14c))
         with self.assertRaisesRegex(ValueError, 'AMD64'):

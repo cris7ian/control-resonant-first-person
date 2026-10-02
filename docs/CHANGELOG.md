@@ -14,6 +14,7 @@
 - Skip the second native projection rebuild when output FOV equals current native FOV. Never skip required writes based on the previous frame's output.
 - Add regressions for expired queries, unrelated cameras, ambiguity, no-op FOV, forwarding, native effects, and immediate safety restoration.
 - Do not log unmeasured FOV as zero degrees on rejected frames. Add a documentation ZIP-version regression and native lifetime guidance in AGENTS.md.
+- Fix actual release repeatability by preserving the input PE timestamp during GNU strip. Verify repeated real ZIPs, not only mocked stripping.
 - Publish as a pre-release because the corrected FOV path still needs live retesting. Stable 0.3.0 remains unchanged.
 
 ## 0.3.0 — first public release

@@ -151,6 +151,8 @@ python scripts/release.py --build build
 The builder requires a clean Git tree, a Windows x64 DLL matching the project version, and GNU `strip` on PATH.
 Use `--strip-tool "<toolchain>/bin/strip.exe"` to select the tool explicitly.
 It strips a temporary copy, checks that runtime sections are unchanged, and leaves the original build untouched.
+Set `SOURCE_DATE_EPOCH` to the input DLL's PE timestamp for GNU strip; otherwise BFD rewrites that timestamp from wall-clock time.
+Verify repeat packaging with the real strip tool across different seconds, not only mocked strip calls.
 
 Output under `build/releases/` contains a mod-only ZIP and `SHA256SUMS.txt`.
 The ZIP includes default assets, documentation, third-party notices, and a hashed manifest tied to the source commit.

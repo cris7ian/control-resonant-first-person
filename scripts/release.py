@@ -3,6 +3,7 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import struct
 import subprocess
@@ -83,7 +84,12 @@ def make_release(build: Path, output: Path, strip_tool: str, revision: str) -> t
     with tempfile.TemporaryDirectory(prefix='efp-release-', dir=output) as temporary:
         stripped = Path(temporary) / 'ExplorationFirstPerson.dll'
         stripped.write_bytes(native)
-        subprocess.run([strip_tool, '--strip-debug', '--strip-unneeded', str(stripped)], check=True)
+        # GNU BFD otherwise rewrites the PE timestamp from wall-clock time on every strip.
+        # Preserve the input build timestamp so repeated packaging of the same DLL is reproducible.
+        pe_offset = struct.unpack_from('<I', native, 0x3c)[0]
+        timestamp = struct.unpack_from('<I', native, pe_offset + 8)[0]
+        environment = {**os.environ, 'SOURCE_DATE_EPOCH': str(timestamp)}
+        subprocess.run([strip_tool, '--strip-debug', '--strip-unneeded', str(stripped)], check=True, env=environment)
         release_native = stripped.read_bytes()
         if runtime_sections(release_native) != before:
             raise RuntimeError('Stripping changed runtime sections; refusing release')
