@@ -147,6 +147,8 @@ GameState diagnostic_state(const StateSnapshot& s, int mode) {
     if (s.contains_combat) return GameState::combat;
     if (s.program_top != "game" || !s.effective_game_active || mode != 0) return GameState::protected_camera;
     if (s.game_top == "exploration") return GameState::exploration;
+    // Observed dialogue-capable free-roam area. Do not admit nested story overlays.
+    if (s.game_top == "story" && s.game_current == 0 && s.game_base == "story") return GameState::exploration;
     return GameState::protected_camera;
 }
 } // namespace efp

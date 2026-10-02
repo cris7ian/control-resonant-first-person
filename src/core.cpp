@@ -1,4 +1,5 @@
 #include "core.hpp"
+#include "camera_geometry.hpp"
 #include <charconv>
 #include <cmath>
 #include <cstdlib>
@@ -33,11 +34,13 @@ bool valid(const Settings& s) {
         s.double_tap_ms >= 150 && s.double_tap_ms <= 800 &&
         s.max_tap_ms >= 50 && s.max_tap_ms <= 500 &&
         s.min_gap_ms >= 10 && s.min_gap_ms <= 100 && s.min_gap_ms < s.double_tap_ms &&
-        std::isfinite(s.prototype_distance) && s.prototype_distance >= -12.0f && s.prototype_distance <= 0.0f &&
+        std::isfinite(s.prototype_distance) && s.prototype_distance >= -7.0f && s.prototype_distance <= -5.0f &&
         std::isfinite(s.eye_side) && s.eye_side >= -1.0f && s.eye_side <= 1.0f &&
         std::isfinite(s.eye_height) && s.eye_height >= -0.5f && s.eye_height <= 0.5f &&
         std::isfinite(s.eye_forward) && s.eye_forward >= -0.3f && s.eye_forward <= 0.3f &&
-        std::isfinite(s.transition_ms) && s.transition_ms >= 0 && s.transition_ms <= 500;
+        std::isfinite(s.transition_ms) && s.transition_ms >= 0 && s.transition_ms <= 500 &&
+        std::abs(reference_boom + s.prototype_distance - s.eye_forward) +
+        std::abs(reference_height + s.eye_height) + std::abs(reference_side + s.eye_side) <= max_eye_displacement + 0.00001f;
 }
 std::optional<Settings> parse_settings(std::string_view ini, const Settings& base) {
     if (!valid(base)) return {};

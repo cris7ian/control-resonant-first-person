@@ -1,6 +1,6 @@
 # Safe installation and removal
 
-The current preview is **0.2.4**, based on the calibrated **0.2.3** checkpoint. It provides a calibrated exploration view, not a finished player-eye camera.
+The current preview is **0.3.0**, an experimental anchor-based view derived from the calibrated offset checkpoint. It is not a validated player-eye camera.
 
 ## Prerequisites
 

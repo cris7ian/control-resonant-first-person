@@ -1,5 +1,7 @@
 #include "core.hpp"
 #include "state_snapshot.hpp"
+#include "camera_geometry.hpp"
+#include <cmath>
 #include <array>
 #include <cstring>
 #include <vector>
@@ -86,6 +88,47 @@ void policy_tests() {
     CameraPolicy r; gesture(r, 0); auto changed = Settings{}; changed.double_tap_ms = 400;
     r.configure(changed); CHECK(!r.active()); CHECK(!r.requested());
 }
+void geometry_tests() {
+    const Settings settings;
+    const Vec3 free_anchor{273.948f,1.716f,141.667f};
+    const Vec3 free_secondary{273.948f,1.466f,141.667f};
+    const Vec3 free_native{274.038f,1.891f,147.646f};
+    const Vec3 direction{-0.032f,-0.021f,-0.999f};
+    CHECK(plausible_anchor(free_anchor,free_secondary,free_native));
+    const auto free_target = anchored_position(free_anchor,direction,settings);
+    CHECK(free_target.has_value());
+    for (float boom : {0.6f,1.0f,3.3f,6.0f,6.4f}) {
+        Vec3 native{}; for (unsigned i=0; i<3; ++i) native[i] = free_anchor[i]-direction[i]*boom;
+        CHECK(plausible_anchor(free_anchor,free_secondary,native));
+        CHECK(anchored_position(free_anchor,direction,settings) == free_target); // native retraction is not an input
+    }
+    // Recorded old free-space view, adjusted for the user's new height (+0.10).
+    const Vec3 calibrated{273.838f,1.609f,141.351f};
+    for (unsigned i=0; i<3; ++i) CHECK(std::abs((*free_target)[i]-calibrated[i]) < 0.04f);
+    const Vec3 wall_anchor{266.410f,1.776f,129.045f};
+    const Vec3 wall_secondary{266.410f,1.526f,129.045f};
+    const Vec3 wall_native{265.832f,1.803f,129.010f};
+    CHECK(plausible_anchor(wall_anchor,wall_secondary,wall_native));
+    const auto wall_target = anchored_position(wall_anchor,{0.998f,-0.040f,0.044f},settings);
+    CHECK(wall_target.has_value());
+    CHECK(std::abs((*wall_target)[0]-wall_anchor[0]) < 0.4f); // not the old 5.7-unit overshoot
+    CHECK(std::abs((*wall_target)[1]-wall_anchor[1]) < 0.2f);
+    CHECK(!plausible_anchor(wall_anchor,{266.410f,1.0f,129.045f},wall_native));
+    CHECK(!plausible_anchor(wall_anchor,wall_secondary,{100,100,100}));
+    CHECK(!anchored_position(free_anchor,{0,0,0},settings));
+    CHECK(!anchored_position(free_anchor,{0,0,3},settings));
+    for (const Vec3 axis : {Vec3{1,0,0},Vec3{0,1,0},Vec3{0,-1,0},Vec3{0,0,1}}) {
+        const auto target = anchored_position({0,0,0},axis,settings);
+        CHECK(target.has_value());
+        float distance = 0; for (float v : *target) { CHECK(std::isfinite(v)); distance += v*v; }
+        CHECK(distance <= max_eye_displacement*max_eye_displacement);
+    }
+    auto unsafe = settings; unsafe.eye_side = 1;
+    CHECK(!valid(unsafe)); CHECK(!anchored_position(free_anchor,direction,unsafe));
+    auto nan = free_anchor; nan[0] = std::numeric_limits<float>::quiet_NaN();
+    CHECK(!anchored_position(nan,direction,settings));
+    CHECK(!plausible_anchor(nan,free_secondary,free_native));
+}
 struct MemoryFixture {
     std::vector<unsigned char> memory = std::vector<unsigned char>(0x4000);
     template<class T> void put(std::uintptr_t address, T value) {
@@ -126,6 +169,17 @@ void snapshot_tests() {
     CHECK(diagnostic_state(inherited.snapshot(), 0) == GameState::protected_camera);
     inherited.text(0x11000, "program_flow"); // unrooted cycle must not recurse indefinitely
     CHECK(!inherited.snapshot().effective_game_active);
+    MemoryFixture story;
+    story.text(0x11000, "story"); auto hub = story.snapshot();
+    CHECK(diagnostic_state(hub,0) == GameState::exploration);
+    CHECK(diagnostic_state(hub,1) == GameState::protected_camera);
+    for (const auto overlay : {"dialogue","conversation","skippable_timeline","system_menu","map"}) {
+        story.put<std::uint32_t>(0x102c8,2); story.put<std::int32_t>(0x102bc,1);
+        story.text(0x11028,overlay);
+        CHECK(diagnostic_state(story.snapshot(),0) == GameState::protected_camera);
+    }
+    story.text(0x11028,"combat"); CHECK(diagnostic_state(story.snapshot(),0) == GameState::combat);
+    story.text(0x11028,"story"); CHECK(diagnostic_state(story.snapshot(),0) == GameState::protected_camera);
     f.text(0x11000, "combat"); s = f.snapshot(); CHECK(s.contains_combat); CHECK(diagnostic_state(s, 0) == GameState::combat);
     f.put<std::uint32_t>(0x102c8, 2); f.put<std::int32_t>(0x102bc, 1); f.text(0x11028, "system_menu");
     s = f.snapshot(); CHECK(s.game_top == "system_menu"); CHECK(s.contains_combat);
@@ -188,10 +242,12 @@ void config_tests() {
     CHECK(!parse_settings("[Settings]\neye_height=nan"));
     CHECK(!parse_settings("[Settings]\neye_height=inf"));
     CHECK(!parse_settings("[Settings]\neye_forward=0.9"));
-    CHECK(parse_settings("[Settings]\nprototype_distance=-12")->prototype_distance == -12.0f);
+    CHECK(parse_settings("[Settings]\nprototype_distance=-7")->prototype_distance == -7.0f);
+    CHECK(parse_settings("[Settings]\nprototype_distance=-5")->prototype_distance == -5.0f);
     CHECK(parse_settings("[Settings]\nprototype_distance=-6")->prototype_distance == -6.0f);
-    CHECK(!parse_settings("[Settings]\nprototype_distance=-12.01"));
-    CHECK(!parse_settings("[Settings]\nprototype_distance=0.01"));
+    CHECK(!parse_settings("[Settings]\nprototype_distance=-7.01"));
+    CHECK(!parse_settings("[Settings]\nprototype_distance=-4.99"));
+    CHECK(!parse_settings("[Settings]\neye_side=1")); // combined local offset budget
     CHECK(!parse_settings("[Settings]\nenabled=1\nenabled=0"));
     CHECK(parse_settings("\xEF\xBB\xBF[Settings]\r\n enabled = 0 \r\n;comment\n")->enabled == false);
     auto base = Settings{}; base.double_tap_ms = 450;
@@ -202,7 +258,7 @@ void config_tests() {
 }
 }
 int main() {
-    try { detector_tests(); policy_tests(); config_tests(); snapshot_tests(); }
+    try { detector_tests(); policy_tests(); config_tests(); snapshot_tests(); geometry_tests(); }
     catch (const std::exception& e) { std::cerr << e.what() << '\n'; return EXIT_FAILURE; }
     std::cout << checks << " checks passed\n";
 }

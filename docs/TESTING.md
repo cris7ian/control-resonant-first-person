@@ -1,4 +1,4 @@
-# Playable preview test: 0.2.4
+# Playable preview test: 0.3.0
 
 ## Current evidence and limits
 
@@ -6,9 +6,11 @@ The user confirmed a useful exploration view after the activity fix and distance
 Logs show recognized double-taps, eligible camera records, and preview activation during exploration.
 Pause/options and focus changes stop the override. This does not prove every protected state or combat encounter.
 
-The preview uses offsets from the native third-person camera, not a validated player-eye anchor.
-Its native wall-retraction behavior still shifts the first-person view. Body clipping and wall penetration remain possible.
-FOV stays at the game's value. The mod does not change character visibility or globally disable collision.
+Version 0.3.0 uses the observed player-following input anchor and a fixed free-space reference. It no longer offsets the retracted third-person position.
+The preceding live capture contained 123 geometry samples with readable inputs and 95 successful writes. The new anchored placement still needs live testing.
+The anchor is not a proven head bone. Body clipping and eye-segment wall penetration remain possible; the 1.25-unit bound is not a collision sweep.
+FOV stays native. Character visibility and global collision settings remain unchanged.
+Exact non-nested `story` is now allowed. Mode changes and named protected states still block the view; active conversation retaining `story`/mode 0 remains a detection gap.
 
 If the game crashes, stutters, or moves the camera unexpectedly, stop testing. Disable Enabled or use the diagnostic-only fallback below.
 
@@ -24,6 +26,9 @@ If the game crashes, stutters, or moves the camera unexpectedly, stop testing. D
 8. Double-tap RS outside combat to reactivate it.
 9. Open and close pause, options, and map screens.
 10. Test walking, pitch changes, stairs, and walls behind the player.
+11. Enter the previously blocked story area and try both toggle directions.
+12. Start a conversation there and report whether the scripted camera remains native.
+13. Stop testing if an active conversation is overridden; toggle off before continuing.
 
 Single-click RS actions still reach the game. Report binding conflicts.
 Keyboard fallback: double-tap **K**. Unbind it in the MODS page to use only RS.
@@ -36,8 +41,8 @@ Open **Options → MODS → Exploration First Person (Prototype)**.
 
 | Setting | Default | Range |
 | --- | --- | --- |
-| Camera distance offset | −6.3 | −12 to 0 |
-| Camera height offset | −0.2 | −0.5 to +0.5 |
+| Anchor distance calibration | −6.35 | −7 to −5 |
+| Camera height offset | −0.15 | −0.5 to +0.5 |
 | Camera side offset | 0 | −1 to +1 |
 | Fine forward offset | −0.05 | −0.3 to +0.3 |
 | Controller binding | RS/R3, code 267 | Supported pad binding |
@@ -50,9 +55,11 @@ The descriptor labels distance values in metres, following the reference. Engine
 These values come from the user's working calibration. Existing installations keep their settings during updates.
 
 More-negative distance moves forward. Positive fine forward moves forward; negative fine forward moves backward.
-Distance −6.3 and fine forward −0.05 give the same axial displacement as distance −6.25 and fine forward 0.
-Use 0.05 increments for fine corrections. Leave the menu to check the view; double-tap if the preview is off.
-Do not jump directly to −12. Move closer to zero if the camera crosses the face or geometry.
+Placement uses a fixed 6-unit boom reference plus measured 0.05 height and 0.10 side reference offsets, independent of native retraction.
+Distance −6.35 and fine forward −0.05 give a +0.30 axial displacement from the anchor.
+Combined axial, vertical, and lateral magnitudes must total no more than 1.25 units. Invalid settings keep the last valid calibration.
+Use 0.05 increments. Leave the menu to check the view; double-tap if the preview is off.
+If the view crosses the face or geometry, move distance toward −6 or disable the preview.
 
 ## Logs
 
@@ -64,9 +71,10 @@ Game folder: `G:\SteamLibrary\steamapps\common\CONTROL Resonant`.
 
 The mod log includes the version, executable fingerprint, explicit activity, and inherited effective activity.
 A `CAMERA PREVIEW ON` message reports policy activation, not independent proof of camera ownership or every successful memory write.
-With **Diagnostic logging** enabled, 0.2.4 adds `CAMERA GEOMETRY` lines at most twice per second.
-They record candidate input vectors, native/requested positions, and actual position-write status. Their input/pivot semantics remain unvalidated.
-See [CAMERA.md](CAMERA.md) for the stationary wall-retraction test. Geometry logging adds bounded reads, not a collision bypass.
+With **Diagnostic logging** enabled, `CAMERA GEOMETRY` lines appear at most twice per second.
+They record input vectors, native/requested positions, `anchor_valid`, `anchor_used`, and position-write status.
+Input-anchor reads now run even when logging is off because placement depends on them. Additional pre-update debug reads remain optional.
+See [CAMERA.md](CAMERA.md) for the wall-retraction test. Native collision history remains unchanged.
 Tell the assistant when testing starts or finishes. It can inspect these local files; no upload is needed.
 
 ## Diagnostic-only fallback

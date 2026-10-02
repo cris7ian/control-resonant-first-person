@@ -1,6 +1,6 @@
 # Implementation plan
 
-## Implementation checkpoint: calibrated preview 0.2.4
+## Implementation checkpoint: anchored preview 0.3.0
 
 Implemented and automated-test verified:
 - Controller-independent double-tap detector and fail-closed camera policy.
@@ -13,9 +13,11 @@ The user requested and tested a playable prototype instead of further test expan
 
 Preview activation requires a supported executable, readable/fresh UI snapshot, foreground input, native camera mode 0, and a structurally plausible writable camera record. Combat clears the request. These checks are not proof of playable-character ownership or complete protection coverage.
 
-The user confirmed a useful exploration view. Native wall retraction still shifts it; the next dependency is identifying the pre-collision pivot or a narrowly scoped boom-retraction control. Eye/camera ownership, body visibility, and complete combat/protected coverage remain open. FOV remains native until axis, units, aspect handling, and a scoped override are validated. This is not a completed first-person mod. The independent resource bridge remains uninstalled. Effective activity now mirrors the native parent recursion with cycle protection; the explicit byte alone is not used as the final activity result.
+The user confirmed a useful offset exploration view. The live capture identified input0 as a stable player-following anchor; 0.3.0 now places the view from that anchor. Live validation of the new placement is the next gate. Eye/camera ownership, body visibility, and complete combat/protected coverage remain open. FOV remains native until axis, units, aspect handling, and a scoped override are validated. This is not a completed first-person mod. The independent resource bridge remains uninstalled. Effective activity now mirrors the native parent recursion with cycle protection; the explicit byte alone is not used as the final activity result.
 
-Version 0.2.4 adds opt-in input/output geometry telemetry to the existing camera hook. It does not add a collision hook, change native collision history, or change FOV. The next live gate is the stationary wall test in [CAMERA.md](CAMERA.md). Static inspection found the boom resolver at RVA `0x2853140`, but its mixed ABI and safe eye-collision policy are not ready for a bypass.
+Version 0.2.4 supplied 123 live geometry samples. Version 0.3.0 replaces retracted-camera-relative placement with a matched input anchor plus fixed reference boom 6.0, height 0.05, and side 0.10. Current defaults are distance −6.35, height −0.15, side 0, fine forward −0.05. Local calibration is bounded to 1.25 units; the original update/history and FOV remain unchanged. Replay accepted all 123 samples, and owned-record smoke checks verified original forwarding and off/invalid-anchor no-write behavior. Native eye-segment collision is not implemented; the local bound is not a sweep.
+
+Exact non-nested `story` in mode 0 is now allowed for dialogue-capable areas. Named protected states and other modes remain blocked. Active dialogue retaining `story`/mode 0 is an explicit detection gap; do not claim complete conversation protection. The next live gate is the new placement/story/conversation test in [CAMERA.md](CAMERA.md). No collision-helper detour or global bypass is installed.
 
 Full requested scope remains the outcome below. Unresolved camera geometry, visibility, and collision work is not treated as complete or removed from scope.
 
@@ -239,9 +241,9 @@ Runtime discovery requires a separate diagnostic session before final release va
 
 ```text
 CMakeLists.txt
-src/{core,native,game_adapter,state_snapshot,state_observer,camera_override}.*
+src/{core,native,game_adapter,state_snapshot,state_observer,camera_override,camera_geometry}.*
 assets/{exploration_first_person.menu.json,ExplorationFirstPerson.ini,dependencies.json}
-tests/{core_tests.cpp,native_smoke.cpp,deploy_tests.py,package_tests.py}
+tests/{core_tests.cpp,native_smoke.cpp,camera_hook_smoke.cpp,geometry_replay.cpp,deploy_tests.py,package_tests.py}
 scripts/{install,package,deploy}.py
 .pi/skills/install-control-resonant/SKILL.md
 docs/{ANALYSIS,PLAN,TESTING,INSTALLATION,CHANGELOG,CAMERA}.md

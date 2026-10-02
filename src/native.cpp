@@ -47,6 +47,8 @@ std::string camera_geometry(const efp::CameraTelemetry& sample) {
     text << "CAMERA GEOMETRY: record=" << sample.record_index
          << "; write=" << (sample.write_attempted ? (sample.write_ok ? "ok" : "failed") : "inactive")
          << "; write_bytes=" << sample.write_bytes
+         << "; anchor_valid=" << (sample.anchor_valid ? "yes" : "no")
+         << "; anchor_used=" << (sample.anchor_used ? "yes" : "no")
          << "; input_before=" << (sample.input_before_readable ? "readable" : "unavailable")
          << "; input_after=" << (sample.input_after_readable ? "readable" : "unavailable");
     const auto vector = [&text](const char* name, const std::array<float,3>& value) {
@@ -95,7 +97,7 @@ DWORD WINAPI run(void*) {
         logfile.open(own_directory / "ExplorationFirstPerson.log", std::ios::app);
         if (!logfile) return 1;
         const bool preview = GetPrivateProfileIntW(L"Safety", L"camera_writes", 0, (own_directory / "ExplorationFirstPerson.ini").c_str()) == 1;
-        log(std::string("Exploration First Person ") + EFP_VERSION + (preview ? ": EXPERIMENTAL camera-offset preview." : ": diagnostic mode; camera writes disabled."));
+        log(std::string("Exploration First Person ") + EFP_VERSION + (preview ? ": EXPERIMENTAL anchored-camera preview." : ": diagnostic mode; camera writes disabled."));
         log("Steam Input Xbox layout; manual double-tap reactivation after combat. No physical HID polling.");
         efp::GameAdapter adapter;
         adapter.initialize(log, preview);
@@ -164,6 +166,7 @@ DWORD WINAPI run(void*) {
             }
             const auto summary = std::string(snapshot.readable ? "readable" : "unavailable") + "; program=" + snapshot.program_top +
                 "; game_base=" + snapshot.game_base + "; game_top=" + snapshot.game_top +
+                "; game_depth=" + std::to_string(snapshot.game_current + 1) +
                 "; combat_present=" + (snapshot.contains_combat ? "yes" : "no") +
                 "; explicit_active=" + (snapshot.explicit_game_active ? "yes" : "no") +
                 "; effective_active=" + (snapshot.effective_game_active ? "yes" : "no");

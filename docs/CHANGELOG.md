@@ -1,5 +1,15 @@
 # Change history
 
+## 0.3.0 — anchored placement and story-area toggles
+
+- Derive position from the matched player-following input anchor, not the shortened third-person boom.
+- Preserve the free-space calibration with fixed reference boom 6.0, height 0.05, and side 0.10.
+- Adopt the latest distance −6.35 and height −0.15; preserve the user's installed INI.
+- Bound combined local calibration to 1.25 units and distance to −7…−5. Invalid inputs/configurations fail closed; no legacy fallback.
+- Allow exact non-nested story states in mode 0, while retaining combat and detected protected-state guards.
+- Add anchor/write telemetry and focused geometry/story regression checks.
+- Keep native collision update/history, FOV, and visibility unchanged. Short eye collision and conversations retaining story/mode 0 remain live-test gaps.
+
 ## 0.2.4 — wall-retraction diagnostics
 
 - Add opt-in bounded reads of candidate camera input records before/after the existing native update.

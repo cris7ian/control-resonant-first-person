@@ -8,7 +8,7 @@ Keep the calibrated defaults while testing one camera variable at a time.
 
 ## Why a wall behind the player shifts the view
 
-The current hook calls the native update, then offsets its resulting position.
+The preceding 0.2.x hook called the native update, then offset its resulting position.
 The native update has already shortened the third-person camera boom to avoid the wall.
 The same fixed offset therefore starts from a different position and pushes the first-person view forward.
 More distance calibration cannot remove this changing base position.
@@ -38,7 +38,29 @@ Keep the native update and collision history unchanged so third-person restorati
 An uncollided boom endpoint plus a fixed offset is still an approximation, not a validated eye anchor.
 Do not freeze a previous camera position; movement, rotation, teleportation, and loading would invalidate it.
 
-## 0.2.4 geometry probe
+## Captured geometry and 0.3.0 placement
+
+The 0.2.4 live test provided 123 readable geometry samples, with 95 successful writes and 28 inactive comparisons.
+The candidate input0 stayed nearly stationary while native distance collapsed from approximately 6.0 to 0.6 units.
+The old offset then overshot the anchor by approximately 5.7 units. This supports excluding native boom retraction from placement.
+
+Version 0.3.0 computes position from matched input0, normalized direction, and fixed free-space references:
+
+`target = anchor - direction * (6.0 + distance - fineForward) + up * (0.05 + height) + horizontalRight * (0.10 + side)`
+
+Latest defaults: distance −6.35, height −0.15, side 0, fine forward −0.05.
+The main distance range is now −7 to −5. Combined offset magnitudes must fit a 1.25-unit local budget.
+Unreadable/replaced input records, implausible pairs, bad directions, or out-of-budget targets leave native output untouched.
+There is no fallback to the old retracted-camera offset. Native update and collision history remain unchanged.
+The measured pair is horizontally coincident with a 0.25-unit vertical separation; its exact head-bone ownership is still unproven.
+
+Replay through the actual compiled core accepted all 123 captured rows. Maximum local displacement was 0.398 units.
+The stationary wall replay stayed 0.335 units from the anchor; free-space calibration error was at most 0.021 units after the height change.
+Synthetic retraction sweeps and owned-record original-forwarding/off/no-write smoke checks also passed.
+Replay and owned-host checks do not replace a live test of the newly installed camera.
+A short eye-segment sweep is still **not implemented**. The displacement cap is not wall collision protection.
+
+## Geometry logging
 
 The probe uses bounded reads inside the existing camera hook. It adds no native detour or collision bypass.
 With **Diagnostic logging** enabled, it reads the input-array candidate at owner `+0x30`, index at `+0x68`, and stride `0x30`.
@@ -47,12 +69,12 @@ It also records the validated output record's native position, requested positio
 Input records are matched by index; failed reads appear as unavailable. These candidates are not assumed to be player-eye coordinates.
 
 Publication uses nonblocking lock acquisition. The worker logs at most two samples per second; the camera callback does not write files.
-With logging disabled, the extra input reads do not run. Position math, policy, and collision behavior remain unchanged.
-This probe has compiled and passed startup checks, but its in-game geometry correlation still requires the test below.
+Input-anchor reads now run even when logging is disabled because placement depends on them. Additional pre-update debug reads remain optional.
+Logs include `anchor_valid` and `anchor_used`, as well as native/requested positions and write status. The native collision resolver remains unmodified.
 
 ### Live wall test
 
-Keep distance −6.3, height −0.2, side 0, and fine forward −0.05 unchanged.
+Keep distance −6.35, height −0.15, side 0, and fine forward −0.05 unchanged.
 Stop if the camera clips, stutters, or behaves unexpectedly.
 
 1. Launch through Steam and load an exploration area outside combat.
@@ -68,8 +90,11 @@ Stop if the camera clips, stutters, or behaves unexpectedly.
 
 Tell the assistant when the open-space and wall phases occur. It can read the local log; no upload is needed.
 Look for `CAMERA GEOMETRY` lines. `write=ok; write_bytes=12` confirms the position write, not exclusive player-camera ownership.
-The native/requested comparison tests the fixed-offset math. Input/output differences help identify the relevant anchor and retraction.
-Do not implement a bypass until the free-space and wall samples establish the required data relationship.
+Expect native camera distance to shorten near a wall, while requested position remains local to the anchor.
+Also test the previously blocked story area and both toggle directions. Start a conversation and check its camera.
+Exact non-nested `story` in mode 0 is allowed; detected protected states and other modes remain blocked.
+Active dialogue retaining `story`/mode 0 cannot yet be distinguished reliably. Stop and toggle off if the preview overrides a conversation.
+Do not claim complete dialogue or eye-collision protection from the current guards.
 
 ## FOV recommendation
 

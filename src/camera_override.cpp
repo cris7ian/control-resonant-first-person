@@ -1,4 +1,5 @@
 #include "camera_override.hpp"
+#include "camera_geometry.hpp"
 #include <MinHook.h>
 #include <array>
 #include <atomic>
@@ -64,6 +65,9 @@ InputRecord read_input_record(std::uintptr_t owner) {
         !read(owner + 0x30, &base, sizeof(base)) || !read(owner + 0x68, &input.index, sizeof(input.index)) ||
         input.index > 0x100000 || base < 0x10000 || base > max - input.index * 0x30 - sizeof(fields) ||
         !read(base + input.index * 0x30, fields.data(), sizeof(fields))) return input;
+    std::uintptr_t base_after{}, index_after{};
+    if (!read(owner + 0x30, &base_after, sizeof(base_after)) || !read(owner + 0x68, &index_after, sizeof(index_after)) ||
+        base_after != base || index_after != input.index) return input;
     for (float value : fields) if (!std::isfinite(value) || std::abs(value) > 1000000.0f) return input;
     input.first = {fields[0],fields[1],fields[2]};
     input.second = {fields[4],fields[5],fields[6]};
@@ -81,23 +85,23 @@ std::uintptr_t camera_detour(void* object, std::uintptr_t a2, std::uintptr_t a3,
     std::uintptr_t base{}, index{};
     if (owner < 0x10000 || owner > std::numeric_limits<std::uintptr_t>::max() - 0x70 ||
         !read(owner + 0x38, &base, sizeof(base)) || !read(owner + 0x68, &index, sizeof(index)) ||
-        index > 0x100000 || base > std::numeric_limits<std::uintptr_t>::max() - index * 0x40) return result;
+        index > 0x100000 || base > std::numeric_limits<std::uintptr_t>::max() - index * 0x40) { last_valid_record.store(0, std::memory_order_release); return result; }
     const auto address = base + index * 0x40;
     CameraRecord record{};
-    if (!writable_record(address) || !read(address, &record, sizeof(record)) || !valid_record(record)) return result;
-    last_valid_record.store(now, std::memory_order_release);
+    if (!writable_record(address) || !read(address, &record, sizeof(record)) || !valid_record(record)) { last_valid_record.store(0, std::memory_order_release); return result; }
     CameraTelemetry sample;
     sample.observed = now; sample.record_index = index;
     sample.native_position = {record.fields[9],record.fields[10],record.fields[11]};
     sample.requested_position = sample.native_position;
     sample.direction = {record.fields[6],record.fields[7],record.fields[8]};
-    if (debug) {
-        const auto after = read_input_record(owner);
-        sample.input_before_readable = before.readable && before.index == index;
-        sample.input_after_readable = after.readable && after.index == index;
-        if (sample.input_before_readable) { sample.input0_before = before.first; sample.input1_before = before.second; }
-        if (sample.input_after_readable) { sample.input0_after = after.first; sample.input1_after = after.second; }
-    }
+    const auto after = read_input_record(owner);
+    sample.input_before_readable = before.readable && before.index == index;
+    sample.input_after_readable = after.readable && after.index == index;
+    if (sample.input_before_readable) { sample.input0_before = before.first; sample.input1_before = before.second; }
+    if (sample.input_after_readable) { sample.input0_after = after.first; sample.input1_after = after.second; }
+    sample.anchor_valid = sample.input_after_readable && plausible_anchor(after.first, after.second, sample.native_position);
+    last_valid_record.store(sample.anchor_valid ? now : 0, std::memory_order_release);
+    if (!sample.anchor_valid) { publish_telemetry(sample); return result; }
     const auto observed = active_sample.load(std::memory_order_acquire);
     int mode = -1;
     DWORD process{}; const auto window = GetForegroundWindow();
@@ -105,18 +109,16 @@ std::uintptr_t camera_detour(void* object, std::uintptr_t a2, std::uintptr_t a3,
     if (!observed || now < observed || now - observed > 150 || process != GetCurrentProcessId() ||
         !read(mode_address, &mode, sizeof(mode)) || mode != 0) { publish_telemetry(sample); return result; }
 
-    const auto* f = record.fields;
-    const float norm = std::sqrt(f[6]*f[6] + f[7]*f[7] + f[8]*f[8]);
-    const float fx = f[6]/norm, fy = f[7]/norm, fz = f[8]/norm;
-    // Prototype switches immediately. Rollback leaves the original output untouched.
-    const float advance = distance.load(std::memory_order_relaxed) - forward.load(std::memory_order_relaxed);
-    std::array<float,3> position = {f[9] - fx*advance, f[10] - fy*advance + height.load(), f[11] - fz*advance};
-    const auto horizontal = std::sqrt(fx*fx + fz*fz);
-    if (horizontal > 0.01f) {
-        const auto sideways = side.load(std::memory_order_relaxed) / horizontal;
-        position[0] += fz*sideways; position[2] -= fx*sideways;
-    }
-    for (const auto value : position) if (!std::isfinite(value) || std::abs(value) > 1000000.0f) { publish_telemetry(sample); return result; }
+    Settings calibration;
+    calibration.prototype_distance = distance.load(std::memory_order_relaxed);
+    calibration.eye_forward = forward.load(std::memory_order_relaxed);
+    calibration.eye_height = height.load(std::memory_order_relaxed);
+    calibration.eye_side = side.load(std::memory_order_relaxed);
+    // Never fall back to the retracted third-person position if the anchor or calibration fails.
+    const auto target = anchored_position(after.first, sample.direction, calibration);
+    if (!target) { last_valid_record.store(0, std::memory_order_release); publish_telemetry(sample); return result; }
+    const auto& position = *target;
+    sample.anchor_used = true;
     SIZE_T written{};
     sample.requested_position = position;
     sample.write_attempted = true;
@@ -141,7 +143,7 @@ bool start_camera_prototype(std::uintptr_t module_base, const Log& log) {
     const auto enable = MH_EnableHook(target);
     if (enable != MH_OK) { log(std::string("Camera hook enable failed: ") + MH_StatusToString(enable)); return false; }
     installed.store(true, std::memory_order_release);
-    log("EXPERIMENTAL camera-offset prototype installed. Eye anchor/body visibility/collision not yet validated.");
+    log("EXPERIMENTAL anchored camera prototype installed. Native boom retraction is excluded from placement; eye collision/body visibility still need testing.");
     return true;
 }
 CameraTelemetry latest_camera_telemetry() {

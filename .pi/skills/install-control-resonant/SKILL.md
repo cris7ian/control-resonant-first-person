@@ -33,7 +33,9 @@ Do not install BetterCamera alongside this camera hook.
 
 Keep existing `ModMenuConfig/exploration_first_person.ini` settings during updates.
 Missing settings use the compiled defaults; the descriptor uses the same defaults.
-Current baseline: distance −6.3, height −0.2, side 0, fine forward −0.05; RS and keyboard K double-taps.
+Current baseline: distance −6.35, height −0.15, side 0, fine forward −0.05; RS and keyboard K double-taps.
+Placement uses a stable candidate anchor and a fixed 6-unit reference. Distance range is −7 to −5; combined local offsets are limited to 1.25 units.
+Exact non-nested story areas are allowed. Active dialogue retaining story/mode 0 remains an unvalidated detection case.
 Combat clears the request. Reactivation after combat always requires a new double-tap.
 Do not reset settings unless requested. Back up requested resets and record hashes in a rollback receipt.
 Do not silently turn `camera_writes` back on if the user disabled it for diagnostics.
@@ -50,4 +52,4 @@ Keep receipts and backups outside the game folder.
 Never modify `CONTROLResonant.exe`, archives, saves, or `steam_api64.dll`.
 Do not launch the game automatically. Tell the user to launch through Steam with Steam Input's Xbox layout.
 Ask them to test RS toggles outside combat and manual reactivation after combat.
-This is a calibrated offset preview, not a validated player-eye/collision implementation.
+This is an anchored prototype, not a validated head-bone/eye-collision implementation. Native update/history and FOV remain unchanged.

@@ -7,6 +7,8 @@ struct CameraTelemetry {
     std::uintptr_t record_index = 0;
     bool input_before_readable = false;
     bool input_after_readable = false;
+    bool anchor_valid = false;
+    bool anchor_used = false;
     bool write_attempted = false;
     bool write_ok = false;
     std::size_t write_bytes = 0;

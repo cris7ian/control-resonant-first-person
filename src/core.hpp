@@ -14,8 +14,8 @@ struct Settings {
     Millis double_tap_ms = 350;
     Millis max_tap_ms = 250;
     Millis min_gap_ms = 40;
-    float prototype_distance = -6.3f;
-    float eye_height = -0.2f;
+    float prototype_distance = -6.35f;
+    float eye_height = -0.15f;
     float eye_forward = -0.05f;
     float eye_side = 0.0f;
     float transition_ms = 180.0f;
