@@ -62,7 +62,6 @@ static StateSnapshot read_snapshot_once(std::uintptr_t environment, const Memory
     const auto base = field<std::uintptr_t>(before.data(), 0);
     const auto count = field<std::uint32_t>(before.data(), 8);
     if (count == 0 || count > 256 || !address_valid(base, count * 0xf0ULL)) return s;
-    s.stack_count = count;
     std::vector<unsigned char> stacks(count * 0xf0ULL);
     if (!read(base, stacks.data(), stacks.size())) return s;
     std::array<unsigned char, 0xf0> game_before{}, program_before{};
@@ -109,7 +108,7 @@ static StateSnapshot read_snapshot_once(std::uintptr_t environment, const Memory
             }
         }
         if (game) {
-            s.game_current = index; s.game_state_count = state_count;
+            s.game_current = index;
             s.explicit_game_active = activity.explicit_active;
         }
         s.activity_stacks.push_back(std::move(activity));

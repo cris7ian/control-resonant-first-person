@@ -2,6 +2,7 @@
 #include "state_snapshot.hpp"
 #include "camera_geometry.hpp"
 #include "camera_transition.hpp"
+#include <clocale>
 #include <cmath>
 #include <array>
 #include <cstring>
@@ -392,7 +393,11 @@ void config_tests() {
     auto base = Settings{}; base.double_tap_ms = 450;
     CHECK(parse_settings("[Settings]\ndebug=1", base)->double_tap_ms == 450);
     CHECK(parse_settings("[Settings]\npad_button=0\nkeyboard_key=88")->keyboard_key == 88);
+    CHECK(!parse_settings("[Settings]\neye_height=0,05"));
     CHECK(!parse_settings("[Settings]\nmax_tap_ms=0"));
+    const auto old_locale = std::setlocale(LC_NUMERIC, "German");
+    CHECK(parse_settings("[Settings]\neye_height=0.05")->eye_height == 0.05f);
+    if (old_locale) std::setlocale(LC_NUMERIC, old_locale);
     base.eye_height = std::numeric_limits<float>::quiet_NaN(); CHECK(!valid(base));
 }
 }

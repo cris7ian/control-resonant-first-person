@@ -21,11 +21,10 @@ std::optional<int> integer(std::string_view s) {
     return result;
 }
 std::optional<float> number(std::string_view s) {
-    std::string text(s);
-    char* end{};
-    const float f = std::strtof(text.c_str(), &end);
-    if (end != text.c_str() + text.size() || !std::isfinite(f)) return {};
-    return f;
+    float result{};
+    const auto [end, ec] = std::from_chars(s.data(), s.data() + s.size(), result);
+    if (ec != std::errc{} || end != s.data() + s.size() || !std::isfinite(result)) return {};
+    return result;
 }
 }
 bool valid(const Settings& s) {

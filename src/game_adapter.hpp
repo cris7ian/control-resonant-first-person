@@ -10,7 +10,6 @@ class GameAdapter {
 public:
     bool initialize(const Log& log, bool camera_writes = false);
     int camera_mode() const;
-    bool supported_build() const { return supported_; }
     bool camera_valid() const; // structural eligibility, not proven player ownership
     Context context() const;
 private:

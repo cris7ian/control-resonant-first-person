@@ -1,6 +1,7 @@
 #include "camera_override.hpp"
 #include "camera_geometry.hpp"
 #include "camera_transition.hpp"
+#include "game_layout.hpp"
 #include <algorithm>
 #include <numbers>
 #include <MinHook.h>
@@ -26,7 +27,23 @@ struct CameraControl {
     Settings settings;
 };
 SRWLOCK control_lock = SRWLOCK_INIT;
+std::atomic<std::uint32_t> control_seq{0};
 CameraControl control;
+CameraControl read_camera_control() {
+    CameraControl snapshot{};
+    for (int retry = 0; retry < 5; ++retry) {
+        const auto s1 = control_seq.load(std::memory_order_acquire);
+        if (s1 & 1) continue;
+        std::memcpy(&snapshot, &control, sizeof(CameraControl));
+        const auto s2 = control_seq.load(std::memory_order_acquire);
+        if (s1 == s2) return snapshot;
+    }
+    if (TryAcquireSRWLockShared(&control_lock)) {
+        snapshot = control;
+        ReleaseSRWLockShared(&control_lock);
+    }
+    return snapshot;
+}
 CameraTransition transition;
 Millis (*clock_now)() = [] { return static_cast<Millis>(GetTickCount64()); };
 bool game_foreground() {
@@ -69,9 +86,7 @@ std::uintptr_t fov_record_address{};
 float fov_baseline{};
 bool fov_calibrated = false;
 std::uintptr_t mode_address{};
-constexpr std::array<unsigned char, 25> prefix = {
-    0x48,0x8B,0xC4,0x4C,0x89,0x48,0x20,0x53,0x56,0x57,0x41,0x54,0x41,
-    0x55,0x41,0x56,0x41,0x57,0x48,0x81,0xEC,0x90,0x03,0x00,0x00};
+constexpr auto& prefix = layout::camera_prologue;
 bool read(std::uintptr_t address, void* out, std::size_t size) {
     SIZE_T got{};
     return address >= 0x10000 && ReadProcessMemory(GetCurrentProcess(), reinterpret_cast<const void*>(address), out, size, &got) && got == size;
@@ -144,19 +159,18 @@ std::uintptr_t camera_detour(void* object, std::uintptr_t a2, std::uintptr_t a3,
     last_valid_record.store(sample.anchor_valid ? now : 0, std::memory_order_release);
     if (!sample.anchor_valid) { publish_telemetry(sample); return result; }
     // Hold a coherent control snapshot through the bounded write; worker changes cannot race a safety exit.
-    if (!TryAcquireSRWLockShared(&control_lock)) { publish_telemetry(sample);return result; }
-    struct Unlock { ~Unlock() { ReleaseSRWLockShared(&control_lock); } } unlock;
+    const auto ctrl = read_camera_control();
     int mode=-1;
-    if (!control.allowed || !control.observed || now<control.observed || now-control.observed>150 ||
+    if (!ctrl.allowed || !ctrl.observed || now<ctrl.observed || now-ctrl.observed>150 ||
         !foreground_check() || !read(mode_address,&mode,sizeof(mode)) || mode!=0) { publish_telemetry(sample);return result; }
-    sample.first_person_blend=control.blend;
-    if (control.blend<=0) { publish_telemetry(sample);return result; }
-    const auto& calibration=control.settings;
+    sample.first_person_blend=ctrl.blend;
+    if (ctrl.blend<=0) { publish_telemetry(sample);return result; }
+    const auto& calibration=ctrl.settings;
     // Never fall back to the retracted third-person position if the anchor or calibration fails.
     const auto target = anchored_position(after.first, after.second, sample.direction, calibration);
     if (!target) { last_valid_record.store(0, std::memory_order_release); publish_telemetry(sample); return result; }
     Vec3 position;
-    for (unsigned i=0;i<3;++i) position[i]=sample.native_position[i]+((*target)[i]-sample.native_position[i])*control.blend;
+    for (unsigned i=0;i<3;++i) position[i]=sample.native_position[i]+((*target)[i]-sample.native_position[i])*ctrl.blend;
     // Blend current endpoints, not frozen world positions, so walking/pitching/native boom recovery continue.
     std::uintptr_t base_after{}, index_after{};
     CameraRecord current{};
@@ -171,7 +185,7 @@ std::uintptr_t camera_detour(void* object, std::uintptr_t a2, std::uintptr_t a3,
     // Bounded position-only write. FOV is independently gated in the render projection hook.
     sample.write_ok = WriteProcessMemory(GetCurrentProcess(), reinterpret_cast<void*>(address + 0x24), position.data(), sizeof(position), &written) && written == sizeof(position);
     sample.write_bytes = written;
-    if (sample.write_ok) publish_position({address,now,control.epoch,control.blend,position,sample.direction});
+    if (sample.write_ok) publish_position({address,now,ctrl.epoch,ctrl.blend,position,sample.direction});
     publish_telemetry(sample);
     return result;
 }
@@ -186,12 +200,11 @@ void projection_detour(void* camera,const void* frame,float* fov,float aspect) {
     const auto now=clock_now();
     fov_telemetry={};fov_telemetry.observed=now;
     const auto reject=[&](const char* why) { fov_calibrated=false;fov_telemetry.reason=why; };
-    if (!TryAcquireSRWLockShared(&control_lock)) { reject("control busy");return; }
-    struct UnlockControl { ~UnlockControl() { ReleaseSRWLockShared(&control_lock); } } unlock_control;
+    const auto ctrl = read_camera_control();
     int mode=-1;
-    if (!control.allowed || !control.observed || now<control.observed || now-control.observed>150 ||
+    if (!ctrl.allowed || !ctrl.observed || now<ctrl.observed || now-ctrl.observed>150 ||
         !foreground_check() || !read(mode_address,&mode,sizeof(mode)) || mode!=0) { reject("native camera: safety interruption");return; }
-    if (!control.settings.first_person_fov_enabled || control.blend<=0) { reject("native FOV");return; }
+    if (!ctrl.settings.first_person_fov_enabled || ctrl.blend<=0) { reject("native FOV");return; }
     std::uintptr_t vtable{};int projection_mode{};unsigned char override_flag{};float native_fov{},native_aspect{};
     MEMORY_BASIC_INFORMATION info{};
     const auto address=reinterpret_cast<std::uintptr_t>(camera);
@@ -211,7 +224,7 @@ void projection_detour(void* camera,const void* frame,float* fov,float aspect) {
     }
     PositionedCamera match{};bool found=false,ambiguous=false;
     for (const auto& p:positioned) {
-        if (!p.observed || now<p.observed || now-p.observed>100 || p.epoch!=control.epoch || p.blend<=0) continue;
+        if (!p.observed || now<p.observed || now-p.observed>100 || p.epoch!=ctrl.epoch || p.blend<=0) continue;
         bool same=true;
         for (unsigned i=0;i<3;++i) same=same && std::isfinite(transform[6+i]) && std::isfinite(transform[9+i]) &&
             std::abs(transform[6+i]-p.direction[i])<=0.0001f && std::abs(transform[9+i]-p.position[i])<=0.0001f;
@@ -231,12 +244,12 @@ void projection_detour(void* camera,const void* frame,float* fov,float aspect) {
     for (unsigned i=0;i<3;++i) if (current.fields[6+i]!=match.direction[i] || current.fields[9+i]!=match.position[i]) {
         reject("positioned camera changed");return;
     }
-    if (!fov_calibrated || fov_epoch!=control.epoch || fov_record_address!=match.address) {
-        fov_baseline=native_fov;fov_epoch=control.epoch;fov_record_address=match.address;fov_calibrated=true;
+    if (!fov_calibrated || fov_epoch!=ctrl.epoch || fov_record_address!=match.address) {
+        fov_baseline=native_fov;fov_epoch=ctrl.epoch;fov_record_address=match.address;fov_calibrated=true;
     }
     constexpr float radians=std::numbers::pi_v<float>/180.0f;
     // Retain native FOV changes after entry as additive offsets, including native sprint changes.
-    const float output=native_fov+(control.settings.first_person_fov*radians-fov_baseline)*match.blend;
+    const float output=native_fov+(ctrl.settings.first_person_fov*radians-fov_baseline)*match.blend;
     // The transition can start outside the menu target range; bound it to the validated native lens range.
     if (!std::isfinite(output) || output<0.35f || output>2.8f || !foreground_check() ||
         !read(mode_address,&mode,4) || mode!=0) { reject("FOV bounds or safety changed");return; }
@@ -247,25 +260,24 @@ void projection_detour(void* camera,const void* frame,float* fov,float aspect) {
     fov_telemetry.reason="matched positioned render camera";
 }
 void start_scoped_fov(std::uintptr_t module_base,const Log& log) {
-    constexpr std::array<unsigned char,22> builder_prefix={0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x68,0x18,0x56,0x57,0x41,0x56,0x48,0x81,0xec,0x90,0x03,0x00,0x00};
-    constexpr std::array<unsigned char,15> setter_prefix={0x33,0xd2,0xc5,0xfa,0x11,0x89,0xd0,0x02,0x00,0x00,0xe9,0xc1,0x0b,0x00,0x00};
+    using namespace layout;
     std::array<unsigned char,22> builder{};std::array<unsigned char,15> setter{};
-    if (!read(module_base+0x1bd5660,builder.data(),builder.size()) || builder!=builder_prefix ||
-        !read(module_base+0x3228200,setter.data(),setter.size()) || setter!=setter_prefix) {
+    if (!read(module_base+projection_builder_rva,builder.data(),builder.size()) || builder!=builder_prefix ||
+        !read(module_base+fov_setter_rva,setter.data(),setter.size()) || setter!=setter_prefix) {
         log("Scoped FOV unavailable: signature mismatch; position transitions remain available.");return;
     }
-    auto* target=reinterpret_cast<void*>(module_base+0x1bd5660);
+    auto* target=reinterpret_cast<void*>(module_base+projection_builder_rva);
     if (MH_CreateHook(target,reinterpret_cast<void*>(&projection_detour),reinterpret_cast<void**>(&original_projection))!=MH_OK) {
         log("Scoped FOV unavailable: hook creation failed; position transitions remain available.");return;
     }
-    render_camera_address=module_base+0x5d047c0;render_vtable=module_base+0x4835370;
-    override_flag_address=module_base+0x5d04f90;set_render_fov=reinterpret_cast<FovSetter>(module_base+0x3228200);
+    render_camera_address=module_base+render_camera_rva;render_vtable=module_base+render_vtable_rva;
+    override_flag_address=module_base+override_flag_rva;set_render_fov=reinterpret_cast<FovSetter>(module_base+fov_setter_rva);
     if (MH_EnableHook(target)!=MH_OK) { log("Scoped FOV unavailable: hook enable failed; position transitions remain available.");return; }
     log("Scoped FOV render hook installed; writes require a matching positioned camera and validated perspective lens.");
 }
 }
 bool start_camera_override(std::uintptr_t module_base, const Log& log) {
-    auto* target = reinterpret_cast<void*>(module_base + 0x207BF90);
+    auto* target = reinterpret_cast<void*>(module_base + layout::camera_update_rva);
     std::array<unsigned char,25> actual{};
     if (!read(reinterpret_cast<std::uintptr_t>(target), actual.data(), actual.size()) || actual != prefix) {
         log("Camera hook rejected: signature differs or another camera mod hooked first."); return false;
@@ -274,7 +286,7 @@ bool start_camera_override(std::uintptr_t module_base, const Log& log) {
     if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) return false;
     const auto create = MH_CreateHook(target, reinterpret_cast<void*>(&camera_detour), reinterpret_cast<void**>(&original));
     if (create != MH_OK) { log(std::string("Camera hook creation failed: ") + MH_StatusToString(create)); return false; }
-    mode_address = module_base + 0x5D05058;
+    mode_address = module_base + layout::mode_rva;
     const auto enable = MH_EnableHook(target);
     if (enable != MH_OK) { log(std::string("Camera hook enable failed: ") + MH_StatusToString(enable)); return false; }
     installed.store(true, std::memory_order_release);
@@ -303,12 +315,14 @@ void publish_camera_control(bool active, Millis observed, const Settings& settin
     const auto now=clock_now();
     allowed=allowed && settings.enabled && valid(settings) && observed && now>=observed && now-observed<=150;
     AcquireSRWLockExclusive(&control_lock);
+    control_seq.fetch_add(1, std::memory_order_release);
     if (settings!=control.settings || !allowed || (control.observed && observed<control.observed)) {
         transition.reset();++control.epoch;
     }
     control.active=active;control.allowed=allowed;control.observed=observed;control.settings=settings;
     control.blend=allowed ? transition.update(now,active,settings.transition_ms) : 0;
     debug_enabled.store(settings.debug,std::memory_order_relaxed);
+    control_seq.fetch_add(1, std::memory_order_release);
     ReleaseSRWLockExclusive(&control_lock);
 }
 } // namespace efp

@@ -16,7 +16,9 @@ else:
 ROOT = Path(__file__).resolve().parents[1]
 
 def supported_hash() -> str:
-    source = (ROOT / 'src/game_adapter.cpp').read_text()
+    path = ROOT / 'src/game_layout.hpp'
+    if not path.is_file(): path = ROOT / 'src/game_adapter.cpp'
+    source = path.read_text(encoding='utf-8')
     match = re.search(r'supported_hash\[\]\s*=\s*"([0-9a-f]{64})"', source)
     if not match: raise RuntimeError('Cannot determine native compatibility gate')
     return match.group(1)

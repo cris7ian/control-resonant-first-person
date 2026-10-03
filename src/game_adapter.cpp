@@ -1,4 +1,5 @@
 #include "game_adapter.hpp"
+#include "game_layout.hpp"
 #include "state_observer.hpp"
 #include "camera_override.hpp"
 #include <bcrypt.h>
@@ -12,11 +13,7 @@
 
 namespace efp {
 namespace {
-constexpr char supported_hash[] = "4f6596b08bb5bc7fe4150cf5b9f71d7bae87eea02d66627c03a5e05ffe84ea62";
-constexpr std::uintptr_t mode_rva = 0x5D05058;
-constexpr std::array<unsigned char, 25> camera_prologue = {
-    0x48,0x8B,0xC4,0x4C,0x89,0x48,0x20,0x53,0x56,0x57,0x41,0x54,0x41,
-    0x55,0x41,0x56,0x41,0x57,0x48,0x81,0xEC,0x90,0x03,0x00,0x00};
+using namespace layout;
 bool read_memory(std::uintptr_t address, void* out, std::size_t size) {
     SIZE_T read{};
     return ReadProcessMemory(GetCurrentProcess(), reinterpret_cast<const void*>(address), out, size, &read) && read == size;
@@ -90,7 +87,7 @@ bool GameAdapter::initialize(const Log& log, bool camera_writes) {
     std::ostringstream message;
     message << "Camera prologue candidates: " << matches << "; candidate RVA 0x" << std::hex << candidate;
     log(message.str());
-    supported_ = matches == 1 && candidate == 0x207BF90 && mode_section_ok;
+    supported_ = matches == 1 && candidate == camera_update_rva && mode_section_ok;
     log(supported_ ? "Static baseline matched. Exclusive camera ownership and head/eye attachment remain unverified." : "Static baseline rejected; adapter stays inactive.");
     if (supported_) {
         start_state_observer(base_, log);

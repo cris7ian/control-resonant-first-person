@@ -12,7 +12,7 @@
 #include <iterator>
 #include <optional>
 #include <sstream>
-#include <stdexcept>
+#include <exception>
 
 namespace {
 HMODULE own_module{};
@@ -121,6 +121,7 @@ DWORD WINAPI run(void*) {
         efp::CameraPolicy policy(settings);
         std::optional<std::string> pending_ini;
         std::optional<std::string> accepted_ini;
+        std::optional<std::string> rejected_ini;
         efp::Millis last_config{}, last_heartbeat{}, last_geometry{}, last_geometry_observed{};
         int selected = -1;
         int last_mode = -999;
@@ -128,6 +129,8 @@ DWORD WINAPI run(void*) {
         bool last_camera_active = false;
         auto last_state = efp::GameState::unknown;
         std::string last_stack_summary, last_fov_reason;
+        efp::StateSnapshot last_logged_snapshot;
+        bool has_logged_snapshot = false;
         efp::Millis last_fov_log{};
         std::uintptr_t last_environment = 0;
         for (;;) {
@@ -138,8 +141,12 @@ DWORD WINAPI run(void*) {
                 if (contents && contents == pending_ini && contents != accepted_ini) {
                     if (const auto parsed = efp::parse_settings(*contents, settings)) {
                         settings = *parsed; policy.configure(settings); diagnostic_taps.configure(settings);
-                        accepted_ini = contents; log("Validated settings applied; gesture history cleared.");
-                    } else if (settings.debug) log("Incomplete or invalid settings ignored; keeping previous values.");
+                        accepted_ini = contents; rejected_ini.reset();
+                        log("Validated settings applied; gesture history cleared.");
+                    } else if (contents != rejected_ini) {
+                        rejected_ini = contents;
+                        log("Incomplete or invalid settings ignored; keeping previous values.");
+                    }
                 }
                 pending_ini = contents;
             }
@@ -178,13 +185,17 @@ DWORD WINAPI run(void*) {
                 last_environment = snapshot.environment;
                 log("UI stack names: " + snapshot.names);
             }
-            const auto summary = std::string(snapshot.readable ? "readable" : "unavailable") + "; program=" + snapshot.program_top +
-                "; game_base=" + snapshot.game_base + "; game_top=" + snapshot.game_top +
-                "; game_depth=" + std::to_string(snapshot.game_current + 1) +
-                "; combat_present=" + (snapshot.contains_combat ? "yes" : "no") +
-                "; explicit_active=" + (snapshot.explicit_game_active ? "yes" : "no") +
-                "; effective_active=" + (snapshot.effective_game_active ? "yes" : "no");
-            if (summary != last_stack_summary) { last_stack_summary = summary; log("UI snapshot: " + summary); }
+            if (!has_logged_snapshot || !(snapshot == last_logged_snapshot)) {
+                last_logged_snapshot = snapshot;
+                has_logged_snapshot = true;
+                const auto summary = std::string(snapshot.readable ? "readable" : "unavailable") + "; program=" + snapshot.program_top +
+                    "; game_base=" + snapshot.game_base + "; game_top=" + snapshot.game_top +
+                    "; game_depth=" + std::to_string(snapshot.game_current + 1) +
+                    "; combat_present=" + (snapshot.contains_combat ? "yes" : "no") +
+                    "; explicit_active=" + (snapshot.explicit_game_active ? "yes" : "no") +
+                    "; effective_active=" + (snapshot.effective_game_active ? "yes" : "no");
+                if (summary != last_stack_summary) { last_stack_summary = summary; log("UI snapshot: " + summary); }
+            }
             if (focused && context.controller_connected && settings.enabled) {
                 if (diagnostic_taps.update(now, button)) {
                     log(std::string("Double-tap observed; state=") + efp::state_name(context.state) +

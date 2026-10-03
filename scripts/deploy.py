@@ -5,7 +5,6 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
-import shutil
 import subprocess
 import tempfile
 import uuid

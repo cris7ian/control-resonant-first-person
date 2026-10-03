@@ -24,6 +24,44 @@ class RepositoryContractTests(unittest.TestCase):
             value = raw == 'true' if raw in ('true', 'false') else float(raw.rstrip('f'))
             self.assertEqual(option['default'], value, option['id'])
         self.assertEqual(options['version'], package.project_version())
+    def test_menu_slider_bounds(self):
+        options = json.loads((ROOT / 'assets/exploration_first_person.menu.json').read_text())
+        for option in options['options']:
+            if option.get('type') != 'slider':
+                continue
+            opt_id = option['id']
+            low, high, default, step = option['min'], option['max'], option['default'], option['step']
+            self.assertLessEqual(low, default, opt_id)
+            self.assertLessEqual(default, high, opt_id)
+            self.assertGreater(step, 0, opt_id)
+            # Individual slider limits must not exceed the engine's hard validation bounds
+            if opt_id == 'prototype_distance':
+                self.assertGreaterEqual(low, -7.0)
+                self.assertLessEqual(high, -5.0)
+            elif opt_id == 'eye_height':
+                self.assertGreaterEqual(low, -0.5)
+                self.assertLessEqual(high, 0.5)
+            elif opt_id == 'eye_side':
+                self.assertGreaterEqual(low, -1.0)
+                self.assertLessEqual(high, 1.0)
+            elif opt_id == 'eye_forward':
+                self.assertGreaterEqual(low, -0.3)
+                self.assertLessEqual(high, 0.3)
+            elif opt_id == 'transition_ms':
+                self.assertGreaterEqual(low, 0)
+                self.assertLessEqual(high, 500)
+            elif opt_id == 'first_person_fov':
+                self.assertGreaterEqual(low, 60)
+                self.assertLessEqual(high, 120)
+            elif opt_id == 'double_tap_ms':
+                self.assertGreaterEqual(low, 150)
+                self.assertLessEqual(high, 800)
+            elif opt_id == 'max_tap_ms':
+                self.assertGreaterEqual(low, 50)
+                self.assertLessEqual(high, 500)
+            elif opt_id == 'min_gap_ms':
+                self.assertGreaterEqual(low, 10)
+                self.assertLessEqual(high, 100)
     def test_confirmed_release_has_no_experimental_menu_labels(self):
         menu = json.loads((ROOT / 'assets/exploration_first_person.menu.json').read_text())
         self.assertEqual(menu['name'], 'Exploration First Person')
