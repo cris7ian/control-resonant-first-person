@@ -1,5 +1,6 @@
 #pragma once
 #include "core.hpp"
+#include "game_layout.hpp"
 #include <windows.h>
 #include <functional>
 #include <string>
@@ -15,6 +16,7 @@ public:
 private:
     std::uintptr_t base_ = 0;
     bool supported_ = false;
+    const layout::BuildLayout* layout_ = nullptr;
 };
 std::string executable_sha256();
 } // namespace efp

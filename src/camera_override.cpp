@@ -236,7 +236,7 @@ void projection_detour(void* camera,const void* frame,float* fov,float aspect) {
     ReleaseSRWLockShared(&positioned_lock);
     if (ambiguous) { reject("ambiguous positioned camera");return; }
     if (!found) { reject("no matching positioned camera");return; }
-    // RVA 0x208F050 passes a stack-built query to the position hook (RCX = RSP+0x50).
+    // The native caller passes a stack-built query to the position hook (RCX = RSP+0x50).
     // Its owner pointer expires before rendering. Revalidate the actual output record instead.
     CameraRecord current{};
     if (!writable_record(match.address) || !read(match.address,&current,sizeof(current)) ||
@@ -259,25 +259,25 @@ void projection_detour(void* camera,const void* frame,float* fov,float aspect) {
     fov_telemetry.native_degrees=native_fov/radians;fov_telemetry.output_degrees=output/radians;
     fov_telemetry.reason="matched positioned render camera";
 }
-void start_scoped_fov(std::uintptr_t module_base,const Log& log) {
+void start_scoped_fov(std::uintptr_t module_base,const layout::BuildLayout& build,const Log& log) {
     using namespace layout;
     std::array<unsigned char,22> builder{};std::array<unsigned char,15> setter{};
-    if (!read(module_base+projection_builder_rva,builder.data(),builder.size()) || builder!=builder_prefix ||
-        !read(module_base+fov_setter_rva,setter.data(),setter.size()) || setter!=setter_prefix) {
+    if (!read(module_base+build.projection_builder_rva,builder.data(),builder.size()) || builder!=builder_prefix ||
+        !read(module_base+build.fov_setter_rva,setter.data(),setter.size()) || setter!=setter_prefix) {
         log("Scoped FOV unavailable: signature mismatch; position transitions remain available.");return;
     }
-    auto* target=reinterpret_cast<void*>(module_base+projection_builder_rva);
+    auto* target=reinterpret_cast<void*>(module_base+build.projection_builder_rva);
     if (MH_CreateHook(target,reinterpret_cast<void*>(&projection_detour),reinterpret_cast<void**>(&original_projection))!=MH_OK) {
         log("Scoped FOV unavailable: hook creation failed; position transitions remain available.");return;
     }
-    render_camera_address=module_base+render_camera_rva;render_vtable=module_base+render_vtable_rva;
-    override_flag_address=module_base+override_flag_rva;set_render_fov=reinterpret_cast<FovSetter>(module_base+fov_setter_rva);
+    render_camera_address=module_base+build.render_camera_rva;render_vtable=module_base+build.render_vtable_rva;
+    override_flag_address=module_base+build.override_flag_rva;set_render_fov=reinterpret_cast<FovSetter>(module_base+build.fov_setter_rva);
     if (MH_EnableHook(target)!=MH_OK) { log("Scoped FOV unavailable: hook enable failed; position transitions remain available.");return; }
     log("Scoped FOV render hook installed; writes require a matching positioned camera and validated perspective lens.");
 }
 }
-bool start_camera_override(std::uintptr_t module_base, const Log& log) {
-    auto* target = reinterpret_cast<void*>(module_base + layout::camera_update_rva);
+bool start_camera_override(std::uintptr_t module_base, const layout::BuildLayout& build, const Log& log) {
+    auto* target = reinterpret_cast<void*>(module_base + build.camera_update_rva);
     std::array<unsigned char,25> actual{};
     if (!read(reinterpret_cast<std::uintptr_t>(target), actual.data(), actual.size()) || actual != prefix) {
         log("Camera hook rejected: signature differs or another camera mod hooked first."); return false;
@@ -286,11 +286,11 @@ bool start_camera_override(std::uintptr_t module_base, const Log& log) {
     if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) return false;
     const auto create = MH_CreateHook(target, reinterpret_cast<void*>(&camera_detour), reinterpret_cast<void**>(&original));
     if (create != MH_OK) { log(std::string("Camera hook creation failed: ") + MH_StatusToString(create)); return false; }
-    mode_address = module_base + layout::mode_rva;
+    mode_address = module_base + build.mode_rva;
     const auto enable = MH_EnableHook(target);
     if (enable != MH_OK) { log(std::string("Camera hook enable failed: ") + MH_StatusToString(enable)); return false; }
     installed.store(true, std::memory_order_release);
-    start_scoped_fov(module_base,log);
+    start_scoped_fov(module_base,build,log);
     log("Anchored exploration camera installed with traversal-relative placement. Native boom retraction is excluded; separate eye collision and body hiding are not implemented.");
     return true;
 }

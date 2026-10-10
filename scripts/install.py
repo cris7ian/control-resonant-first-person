@@ -8,10 +8,11 @@ import subprocess
 import sys
 
 if __package__:
-    from . import deploy, package
+    from . import deploy, package, check_layout
 else:
     import deploy
     import package
+    import check_layout
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,14 +24,14 @@ def supported_hash() -> str:
     if not match: raise RuntimeError('Cannot determine native compatibility gate')
     return match.group(1)
 
+def supported_hashes() -> tuple[str, ...]:
+    return tuple(check_layout.build_layouts())
+
 def check_game(game: Path) -> str:
     deploy.ensure_closed()
     executable = deploy.contained(game, 'CONTROLResonant.exe')
     if not executable.is_file(): raise RuntimeError(f'Game executable not found: {executable}')
-    fingerprint = deploy.digest(executable)
-    if fingerprint != supported_hash():
-        raise RuntimeError(f'Unsupported executable SHA256: {fingerprint}. Do not bypass the native compatibility gate.')
-    return fingerprint
+    return check_layout.verify(executable)['sha256']
 
 def preserve_safety(staging: Path, game: Path) -> None:
     rel = 'crmods/ExplorationFirstPerson/ExplorationFirstPerson.ini'

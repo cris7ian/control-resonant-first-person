@@ -5,11 +5,11 @@
 #include <array>
 #include <cstring>
 #include <mutex>
+#include <sstream>
 
 namespace efp {
 namespace {
 using MirrorSystem = void (*)(void* facts, void* stacks);
-using layout::mirror_rva;
 using layout::mirror_prefix;
 struct Observer {
     MirrorSystem original{};
@@ -41,9 +41,9 @@ void mirror_detour(void* facts, void* stacks) {
     }
 }
 }
-bool start_state_observer(std::uintptr_t base, const Log& log) {
+bool start_state_observer(std::uintptr_t base, const layout::BuildLayout& build, const Log& log) {
     if (observer.load()) return true;
-    auto* target = reinterpret_cast<void*>(base + mirror_rva);
+    auto* target = reinterpret_cast<void*>(base + build.mirror_rva);
     std::array<unsigned char, mirror_prefix.size()> actual{};
     if (!memory_read(reinterpret_cast<std::uintptr_t>(target), actual.data(), actual.size()) || actual != mirror_prefix) {
         log("State observer signature mismatch or earlier hook: no state detour installed."); return false;
@@ -61,7 +61,10 @@ bool start_state_observer(std::uintptr_t base, const Log& log) {
         // Keep observer storage alive even on a partial enable failure.
         log(std::string("State observer hook enable failed: ") + MH_StatusToString(enabled)); return false;
     }
-    log("Diagnostic identity state observer installed at RVA 0x17D8E10; sampling UI stacks after original updates.");
+    std::ostringstream message;
+    message << "Diagnostic identity state observer installed at RVA 0x" << std::hex << build.mirror_rva
+        << "; sampling UI stacks after original updates.";
+    log(message.str());
     return true;
 }
 StateSnapshot latest_state_snapshot(Millis& observed_at) {

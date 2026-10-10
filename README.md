@@ -2,9 +2,11 @@
 
 Explore CONTROL Resonant in first person. Double-tap the right stick or **K** to switch views. Combat returns you to third person; switch back manually afterward.
 
-**[Download 0.3.2](https://github.com/cris7ian/control-resonant-first-person/releases/tag/v0.3.2)** · **[Previous releases](https://github.com/cris7ian/control-resonant-first-person/releases)** · **[Report a bug](https://github.com/cris7ian/control-resonant-first-person/issues)**
+**[Download 0.3.3](https://github.com/cris7ian/control-resonant-first-person/releases/tag/v0.3.3)** (pre-release) · **[Previous releases](https://github.com/cris7ian/control-resonant-first-person/releases)** · **[Report a bug](https://github.com/cris7ian/control-resonant-first-person/issues)**
 
-**0.3.2:** first-person wall traversal, fast eased transitions, and optional first-person FOV are user-confirmed in live play.
+**0.3.3:** restores compatibility with the updated game executable inspected on October 10. The user confirmed first-person operation; live logs recorded activation and manual return.
+
+**Pre-release limitation:** custom first-person FOV was disabled during that test. FOV on the updated executable remains unconfirmed. Disable **Custom first-person FOV** to use the confirmed position-only path. Previous-build FOV confirmation does not validate this update.
 
 ## Requirements
 
@@ -21,7 +23,7 @@ Game updates can change compatibility. The mod checks the executable and refuses
 **Close the game before installing or updating.** Do not replace DLLs while it is running.
 
 1. Install CRLoader and CRModMenu using their authors' instructions.
-2. Download `control-resonant-first-person-0.3.2-windows-x64.zip` from [Releases](https://github.com/cris7ian/control-resonant-first-person/releases).
+2. Download `control-resonant-first-person-0.3.3-windows-x64.zip` from [Releases](https://github.com/cris7ian/control-resonant-first-person/releases).
 3. Extract the ZIP into a temporary folder outside the game directory.
 4. In Steam, open the game's **Properties → Installed Files → Browse**.
 5. Copy the extracted `crmods/ExplorationFirstPerson` folder into the game's `crmods` folder.

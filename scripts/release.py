@@ -104,6 +104,7 @@ def make_release(build: Path, output: Path, strip_tool: str, revision: str) -> t
         payload[f'{MOD}/licenses/{name}'] = (ROOT / 'licenses' / name).read_bytes()
     manifest = {'schema': 1, 'version': version, 'source_commit': revision,
                 'supported_executable_sha256': install.supported_hash(),
+                'supported_executable_sha256s': list(install.supported_hashes()),
                 'files': [{'path': name, 'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data)}
                           for name, data in sorted(payload.items())]}
     payload['release-manifest.json'] = (json.dumps(manifest, indent=2) + '\n').encode()

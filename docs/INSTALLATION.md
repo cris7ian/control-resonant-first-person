@@ -23,7 +23,7 @@ Steam Input must provide an **Xbox layout** for controller input. The mod polls 
 Each release includes `SHA256SUMS.txt`. Compare its ZIP hash with PowerShell output:
 
 ```powershell
-Get-FileHash .\control-resonant-first-person-0.3.2-windows-x64.zip -Algorithm SHA256
+Get-FileHash .\control-resonant-first-person-0.3.3-windows-x64.zip -Algorithm SHA256
 ```
 
 The ZIP also includes `release-manifest.json`, with SHA-256 hashes for its payload files.
@@ -42,21 +42,29 @@ The ZIP also includes `release-manifest.json`, with SHA-256 hashes for its paylo
 
 ## Supported game build
 
-Version 0.3.2 supports the executable named `CONTROLResonant.exe` with this SHA-256:
+Version **0.3.3** supports both fingerprints below. Earlier builds support only the previous executable.
+The updated executable requires 0.3.3; reinstalling an earlier build does not restore compatibility.
+Version 0.3.3 remains a **pre-release**: the user confirmed first-person operation, but custom FOV was disabled during testing.
 
-```text
-4f6596b08bb5bc7fe4150cf5b9f71d7bae87eea02d66627c03a5e05ffe84ea62
-```
+| Executable | SHA-256 | Size | Live validation |
+| --- | --- | --- | --- |
+| Previous build | `4f6596b08bb5bc7fe4150cf5b9f71d7bae87eea02d66627c03a5e05ffe84ea62` | 100,390,832 bytes | Camera, traversal, transitions, and FOV confirmed on 0.3.2 |
+| Updated build, inspected October 10 | `9f56611d767c9227a8a1b250c01acf9478b50933c65f86a1e044fcc53df67cb1` | 99,470,256 bytes | User-confirmed first-person operation and logged manual toggles; custom FOV unconfirmed |
 
-The executable is 100,390,832 bytes. The exact hash, not the size alone, determines support.
+The exact hash, not the size alone, determines support. These fingerprints identify `CONTROLResonant.exe`.
 Check it from the game folder:
 
 ```powershell
 Get-FileHash .\CONTROLResonant.exe -Algorithm SHA256
 ```
 
-The native adapter verifies the executable and expected hook signatures before installing hooks.
-Version 0.3.2 includes user-confirmed wall traversal, eased transitions, and scoped FOV. Previous release tags and assets remain unchanged.
+The native adapter selects one complete address profile by exact fingerprint and checks hook signatures before installing hooks.
+Source installation also verifies native references to the mode mirror, scratch camera, vtable, override flag, and FOV setter.
+Version 0.3.3 retains the camera behavior and settings. The user confirmed working first-person operation on the updated executable.
+The latest logs recorded eligible camera records, first-person activation, manual return, and protected-menu detection.
+Custom FOV was disabled. No matched FOV write was recorded on this executable; the release remains a pre-release.
+Disable **Custom first-person FOV** to use the confirmed position-only path. Traversal, combat, and focus coverage still need broader updated-build testing.
+Previous release tags and assets remain unchanged.
 After a game update, an unsupported executable leaves the camera untouched. Do not bypass the compatibility gate.
 
 ## Troubleshooting
@@ -88,7 +96,8 @@ Disable **Custom first-person FOV** to retain native FOV without disabling smoot
 Set transition duration to `0` for immediate manual toggles. Combat, focus loss, and protected-state returns remain immediate.
 Changing settings clears intent; leave the menu and double-tap again.
 If FOV does not change, inspect `Scoped FOV` logs. Unmatched render cameras retain native FOV, but position transitions remain available.
-The user confirmed transitions, FOV, and wall traversal. Live logs recorded matched FOV writes for 100° and 120° settings.
+The user confirmed transitions, FOV, and wall traversal on the previous executable. Its logs recorded matched FOV writes for 100° and 120° settings.
+Custom FOV on the updated executable still requires live confirmation, including a matched `Scoped FOV` write with custom FOV enabled.
 This does not guarantee every native FOV effect or scripted camera sequence.
 
 ### The view clips or affects a conversation
@@ -118,6 +127,23 @@ camera_writes=0
 
 Restart the game. This disables both position and FOV hooks while retaining input and state diagnostics.
 To restore camera writes, close the game, set the value to `1`, and restart.
+
+## Upload an update to Nexus Mods
+
+Upload the generated public ZIP as version **0.3.3**:
+
+```text
+build/releases/v0.3.3/control-resonant-first-person-0.3.3-windows-x64.zip
+```
+
+The ZIP includes the mod DLL, menu descriptor, default safety INI, documentation, and required third-party notices.
+Upload the complete ZIP, not individual DLLs or files copied from your installed mod folder.
+Do not upload `build/package`, CRLoader, CRModMenu, logs, receipts, personal settings, or game files.
+`SHA256SUMS.txt` is an optional verification attachment; it is not a required mod-installation file.
+
+Label the file description **0.3.3 compatibility pre-release**. State that camera operation is user-confirmed, but updated-build custom FOV is unconfirmed.
+Keep CRLoader 1.0.0 and CRModMenu 1.7.0 listed as separate requirements.
+Tell existing users to close the game and preserve `ExplorationFirstPerson.ini` and `ModMenuConfig` when updating.
 
 ## Remove or roll back
 

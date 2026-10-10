@@ -57,12 +57,16 @@ bool GameAdapter::initialize(const Log& log, bool camera_writes) {
     base_ = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
     const auto hash = executable_sha256();
     log("Executable SHA256: " + (hash.empty() ? std::string("unavailable") : hash));
-    if (hash != supported_hash) { log("Unsupported executable: native observations and all camera changes disabled."); return false; }
+    layout_ = select_build(hash);
+    if (!layout_) { log("Unsupported executable: native observations and all camera changes disabled."); return false; }
+    const auto& build = *layout_;
+    log(hash == supported_hash ? "Updated executable profile selected; first-person operation user-confirmed; custom FOV remains unconfirmed." :
+        "Legacy executable profile selected; previously live-confirmed baseline.");
     IMAGE_DOS_HEADER dos{};
     if (!read_memory(base_, &dos, sizeof(dos)) || dos.e_magic != IMAGE_DOS_SIGNATURE || dos.e_lfanew < 0) return false;
     IMAGE_NT_HEADERS64 nt{};
     if (!read_memory(base_ + dos.e_lfanew, &nt, sizeof(nt)) || nt.Signature != IMAGE_NT_SIGNATURE ||
-        nt.FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 || nt.OptionalHeader.SizeOfImage <= mode_rva + sizeof(int)) return false;
+        nt.FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 || nt.OptionalHeader.SizeOfImage <= build.mode_rva + sizeof(int)) return false;
     const auto sections_address = base_ + dos.e_lfanew + offsetof(IMAGE_NT_HEADERS64, OptionalHeader) + nt.FileHeader.SizeOfOptionalHeader;
     std::size_t matches = 0;
     std::uintptr_t candidate = 0;
@@ -72,7 +76,7 @@ bool GameAdapter::initialize(const Log& log, bool camera_writes) {
         if (!read_memory(sections_address + i * sizeof(section), &section, sizeof(section))) return false;
         const auto size = section.Misc.VirtualSize;
         if (section.VirtualAddress > nt.OptionalHeader.SizeOfImage || size > nt.OptionalHeader.SizeOfImage - section.VirtualAddress) return false;
-        if (mode_rva >= section.VirtualAddress && mode_rva + sizeof(int) <= section.VirtualAddress + size) {
+        if (build.mode_rva >= section.VirtualAddress && build.mode_rva + sizeof(int) <= section.VirtualAddress + size) {
             mode_section_ok = (section.Characteristics & IMAGE_SCN_MEM_WRITE) && !(section.Characteristics & IMAGE_SCN_MEM_EXECUTE);
         }
         if (std::memcmp(section.Name, ".text", 5) != 0) continue;
@@ -87,17 +91,17 @@ bool GameAdapter::initialize(const Log& log, bool camera_writes) {
     std::ostringstream message;
     message << "Camera prologue candidates: " << matches << "; candidate RVA 0x" << std::hex << candidate;
     log(message.str());
-    supported_ = matches == 1 && candidate == camera_update_rva && mode_section_ok;
+    supported_ = matches == 1 && candidate == build.camera_update_rva && mode_section_ok;
     log(supported_ ? "Static baseline matched. Exclusive camera ownership and head/eye attachment remain unverified." : "Static baseline rejected; adapter stays inactive.");
     if (supported_) {
-        start_state_observer(base_, log);
-        if (camera_writes) start_camera_override(base_, log);
+        start_state_observer(base_, build, log);
+        if (camera_writes) start_camera_override(base_, build, log);
     }
     return supported_;
 }
 int GameAdapter::camera_mode() const {
     int mode = -1;
-    if (!supported_ || !read_memory(base_ + mode_rva, &mode, sizeof(mode))) return -1;
+    if (!supported_ || !read_memory(base_ + layout_->mode_rva, &mode, sizeof(mode))) return -1;
     return mode;
 }
 bool GameAdapter::camera_valid() const { return supported_ && camera_record_recent(); }

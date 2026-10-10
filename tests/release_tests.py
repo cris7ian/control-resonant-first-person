@@ -75,6 +75,7 @@ class ReleaseTests(unittest.TestCase):
             manifest = json.loads(archive.read('release-manifest.json'))
             self.assertEqual(manifest['version'], '0.3.0')
             self.assertEqual(manifest['source_commit'], '1234567')
+            self.assertEqual(manifest['supported_executable_sha256s'], list(release.install.supported_hashes()))
             self.assertEqual({item['path'] for item in manifest['files']}, expected)
             for item in manifest['files']:
                 data = archive.read(item['path'])

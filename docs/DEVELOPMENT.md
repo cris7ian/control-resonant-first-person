@@ -39,6 +39,53 @@ One lens rejection retained native FOV without disabling placement. Detailed geo
 Do not claim full traversal geometry coverage from those heartbeats alone; combine telemetry with the user's explicit confirmation.
 Do not claim real FOV application, native effects, render matching, or full sprint/conversation coverage solely because automated checks pass.
 
+## Executable profiles and compatibility validation
+
+Version 0.3.3 adds the updated executable inspected on October 10, while retaining the previously supported build.
+The user explicitly confirmed that the installed compatibility build works, then requested its merge into main and a release.
+The latest live session selected the updated fingerprint, installed the hooks, retained eligible records, and recorded completed on/off double-taps.
+The log detected protected menus after manual exit. Detailed geometry was disabled, so it does not measure position writes or transition timing.
+Custom FOV was disabled throughout this session. The log recorded native FOV only, not a matched custom-FOV write.
+The confirmed compatibility code can merge into main; v0.3.3 must remain a pre-release until updated-build FOV receives explicit live confirmation.
+Traversal, combat, focus, clipping, and scripted-state coverage still need broader updated-build testing.
+Previous releases and their live confirmation remain historical evidence for the previous executable, not this update.
+
+`src/game_layout.hpp` holds complete fingerprint-keyed profiles. Select a profile before installing any hook; never mix profile addresses.
+Unknown hashes remain unsupported. No runtime signature search chooses an unpinned hook address.
+
+| Dependency | Previous RVA | Updated RVA |
+| --- | --- | --- |
+| Camera update | `0x207BF90` | `0x207BFA0` |
+| Camera mode mirror | `0x5D05058` | `0x5C24088` |
+| UI state observer | `0x17D8E10` | `0x17D8E10` |
+| Projection builder | `0x1BD5660` | `0x1BD5660` |
+| FOV setter | `0x3228200` | `0x32285C0` |
+| Scratch render camera | `0x5D047C0` | `0x5C23AC0` |
+| Render camera vtable | `0x4835370` | `0x478B4B0` |
+| Native override flag, read only | `0x5D04F90` | `0x5C237E8` |
+| Camera mode setter, inspection only | `0x1BCEC30` | `0x1BCEC30` |
+| Lens constructor, inspection only | `0x3227F10` | `0x32282D0` |
+| Projection caller, inspection only | `0x1BD5240` | `0x1BD5240` |
+
+Run the read-only verifier against the actual installed executable:
+
+```powershell
+python scripts/check_layout.py "G:\SteamLibrary\steamapps\common\CONTROL Resonant\CONTROLResonant.exe"
+```
+
+It reads the native profile registry, checks the exact hash, and verifies signatures, executable sections, and camera-prologue uniqueness.
+It checks unwind-table function starts for detour targets. The leaf FOV setter has no unwind entry and requires its complete signature instead.
+It independently decodes references from the mode setter, projection caller, projection builder, lens constructor, and FOV setter.
+These references validate the mode mirror, scratch camera, vtable, override flag, lens constructor, and native projection rebuild.
+Offsets do not share one reliable displacement across this update; do not apply a section-wide shift.
+The verifier executes no game code and changes no game files. Source installation runs it before building and again before deployment.
+
+Static inspection retains the camera query's input/output pointers at `+0x30`/`+0x38`, index at `+0x68`, and record strides `0x30`/`0x40`.
+The updated native caller at `0x208F060` still passes the query at `RSP+0x50`; do not retain that stack pointer.
+The observer still uses `0xF0` stack records, with active/index/states/count fields at `+0xB8`/`+0xBC`/`+0xC0`/`+0xC8`.
+The lens retains perspective/FOV/aspect fields at `+0x2CC`/`+0x2D0`/`+0x2D4` and the existing mixed pointer/float ABI.
+These are implementation assumptions checked against native instructions. Live first-person operation is user-confirmed; custom FOV rendering remains unconfirmed.
+
 ## Implementation map
 
 | Files | Responsibility |
@@ -51,12 +98,12 @@ Do not claim real FOV application, native effects, render matching, or full spri
 | `src/camera_override.*` | Original-first camera hook, record checks, final position writes, telemetry |
 | `src/native.cpp` | DLL lifecycle, XInput worker, stable configuration reads, and logging |
 | `assets/` | Default safety INI, menu descriptor, and pinned local dependency metadata |
-| `scripts/` | Local installation/deployment and separate public release packaging |
+| `scripts/` | Read-only executable verification, local installation/deployment, and separate public release packaging |
 
 ## Camera contract
 
-The camera update hook uses RVA `0x207BF90`. The state observer uses RVA `0x17D8E10`.
-All RVAs apply only to the executable fingerprint in [installation documentation](INSTALLATION.md#supported-game-build).
+The camera update and state observer use the selected profile's RVAs from the table above.
+Each profile applies only to its exact fingerprint in [installation documentation](INSTALLATION.md#supported-game-build).
 The full native camera ABI and exclusive player-camera ownership remain provisional.
 
 The hook forwards ten observed integer/pointer argument slots and preserves the original return value.
@@ -111,23 +158,23 @@ Transition positions lie on the segment between the native camera and the bounde
 No new eye collision or clipping guarantee is introduced.
 
 The native render builder at RVA `0x1BD5660` takes `(camera, transform, float* fov, float aspect)` in RCX/RDX/R8/XMM3.
-Call it unchanged first, once. Its caller at `0x1BD5240` uses scratch camera RVA `0x5D047C0`.
-Validate that exact camera, writable lens storage, native vtable RVA `0x4835370`, perspective mode `+0x2CC == 1`, horizontal FOV `+0x2D0`, and aspect `+0x2D4`.
-The getter at `0x3228290` computes vertical FOV as `2*atan(tan(horizontalFov/2)/aspect)`; native lens angles use radians.
+Call it unchanged first, once. Its caller at `0x1BD5240` uses the selected profile's scratch camera.
+Validate that exact camera, writable lens storage, the profile's vtable, perspective mode `+0x2CC == 1`, horizontal FOV `+0x2D0`, and aspect `+0x2D4`.
+The getter at `0x3228290` (previous) or `0x3228650` (updated) computes vertical FOV as `2*atan(tan(horizontalFov/2)/aspect)`; native lens angles use radians.
 Signature-check both builder and setter before installing the FOV hook. FOV hook rejection must not reject the existing position hook.
 
 Match transform direction/position to exactly one of eight recent successfully positioned records, within 0.0001 units and 100 ms.
 Reject ambiguous matches. Require the current control epoch and revalidate the output record's private writable memory, direction, position, focus, freshness, and native mode.
-Do not reread the camera hook's query/owner pointer later. Native caller `0x208F050` constructs it at `RSP+0x50` and passes that stack address in RCX.
+Do not reread the camera hook's query/owner pointer later. Native caller `0x208F050` (previous) or `0x208F060` (updated) constructs it at `RSP+0x50` and passes that stack address in RCX.
 The stack query expires when its caller returns; the actual output-record address is the value retained for render correlation.
 Regression tests fail against the original preview when that stack query is overwritten after the position write.
 This remains a bounded render-record correlation gate, not proof of exclusive player ownership. Other native sequences still need live coverage.
 FOV rejection leaves the native projection intact and does not invalidate position eligibility.
 
 The optional horizontal first-person FOV defaults to 100 degrees, range 60–120. Capture native FOV on the first matched entry frame.
-Apply `nativeFov + (requestedEntryFov - entryNativeFov) * positionedBlend` using native setter RVA `0x3228200`.
-The setter receives its float in XMM1, updates `+0x2D0`, and calls the native projection rebuild at `0x3228DD0`.
-Never hand-edit matrices or change input FOV, global override byte `0x5D04F90`, or shared game camera components.
+Apply `nativeFov + (requestedEntryFov - entryNativeFov) * positionedBlend` using the selected profile's native setter.
+The setter receives its float in XMM1, updates `+0x2D0`, and calls the native projection rebuild at `0x3228DD0` (previous) or `0x3229190` (updated).
+Never hand-edit matrices or change input FOV, the profile's global override byte, or shared game camera components.
 Respect an active native global override by leaving FOV untouched. Preserve native lens/aspect parameters and native effects computed before the setter.
 Key the entry reference by control epoch and matched output-record address. Unrelated render-camera calls do not clear it or replace gameplay telemetry.
 A regression fails against the original preview when an unrelated camera call resets the native-effect reference.
@@ -190,13 +237,16 @@ Missing prerequisites fail the explicit check; there is no silent skip. Build wi
 Temporary test archives use an `integration-test` source marker and do not replace `build/releases` or any published assets.
 
 Output under `build/releases/` contains a mod-only ZIP and `SHA256SUMS.txt`.
+Use `--output-dir build/releases/v0.3.3` to keep this release's checksums separate from earlier artifacts.
+For Nexus upload instructions, see [installation documentation](INSTALLATION.md#upload-an-update-to-nexus-mods).
 The ZIP includes default assets, documentation, third-party notices, and a hashed manifest tied to the source commit.
 It never reads the dependency-inclusive `build/package` staging directory or installed game settings.
 
 Use `v<version>` for the Git tag. Keep CMake and the menu descriptor version aligned.
 Check README and installation ZIP examples against that version; a repository regression guards these examples.
-After explicit live confirmation, merge the tested feature into main and prepare a regular release.
-For unconfirmed pre-releases, retain stable main and tag the verified feature branch. Run CI on the exact source before publishing.
+After explicit live confirmation, merge the tested feature into main. A working camera does not establish custom-FOV application.
+Version 0.3.3 has user-confirmed camera operation and an explicit merge request, but remains a pre-release because updated-build FOV is unconfirmed.
+For other unconfirmed camera changes, retain stable main and tag the verified feature branch. Run CI on the exact source before publishing.
 A release-preparation request creates a draft; publish only when requested. Do not move previous tags or replace previous assets.
 Download published assets again and verify checksums, manifest source identity, and every payload hash.
 Upload only the ZIP and checksum file. Do not upload local installation packages, dependency archives, telemetry, or receipts.

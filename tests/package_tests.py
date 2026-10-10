@@ -71,8 +71,11 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertNotIn('awaits live retesting', text, option['id'])
         # Keep the old key so existing calibration is not lost when the menu is renamed.
         self.assertIn('prototype_distance', {option['id'] for option in menu['options']})
-    def test_documented_zip_examples_match_project_version(self):
-        version = package.project_version()
+    def test_documented_zip_examples_match_published_download(self):
+        # A feature-branch compatibility build must not advertise an unpublished download.
+        readme = (ROOT / 'README.md').read_text(encoding='utf-8')
+        version = re.search(r'\[Download ([0-9.]+)\]', readme)[1]
+        self.assertIn(f'/releases/tag/v{version}', readme)
         expected = f'control-resonant-first-person-{version}-windows-x64.zip'
         for name in ('README.md', 'docs/INSTALLATION.md'):
             text = (ROOT / name).read_text(encoding='utf-8')

@@ -24,6 +24,10 @@ Use `--dependency-dir "<ZIP folder>"` if the archives are not under `reference/a
 Use `--cc "<WinLibs>/bin/gcc.exe" --cxx "<WinLibs>/bin/g++.exe"` if PATH selects the wrong compiler.
 
 The helper builds and tests our DLL, stages fresh assets, verifies dependency hashes, and checks the supported executable twice.
+Version 0.3.3 retains the previous profile and adds the updated executable inspected October 10.
+Preflight verifies native references as well as the exact hash. Never bypass a reference or signature mismatch.
+The user confirmed updated-executable first-person operation and explicitly requested its merge into main.
+Custom FOV was disabled during that test; updated-executable FOV remains unconfirmed. Version 0.3.3 remains a pre-release.
 The default command changes generated build files, not game files. Only `--apply` installs mod files.
 Archives are local prerequisites, not committed or publicly redistributed dependencies.
 Never bypass a hash mismatch, unsupported executable, conflicting loader/menu, or running-game guard.
@@ -58,7 +62,9 @@ Ask them to test RS toggles outside combat and manual reactivation after combat.
 This is an anchored exploration camera, not a head-bone/eye-collision implementation. Native update/history remain unchanged.
 Ask the user to test floor-to-wall entry, wall toggles, floor return, both transition directions, FOV, and immediate combat/focus returns.
 Check `Scoped FOV` logs for a matching positioned render camera. FOV failure must not block position transitions.
-Wall traversal, transitions, and scoped FOV are user-confirmed. Live telemetry also recorded matched writes for 100° and 120° settings.
+Wall traversal, transitions, and scoped FOV are user-confirmed on the previous executable. Its telemetry recorded matched writes for 100° and 120° settings.
+Updated-executable first-person operation is user-confirmed in 0.3.3, with logged on/off toggles and protected-menu detection.
+Custom FOV was disabled; require updated-executable FOV confirmation before calling 0.3.3 stable. Broader traversal/combat/focus coverage remains limited.
 Version 0.3.2 removes experimental labels. It does not establish universal native-effect, clipping, or scripted-state coverage.
 Before clearing runtime logs, review and archive them under ignored analysis/ with the game closed.
 Retain previous published tags and assets. Release preparation creates a draft unless publication is requested.

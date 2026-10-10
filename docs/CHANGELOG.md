@@ -1,5 +1,19 @@
 # Change history
 
+## 0.3.3 — updated-executable compatibility pre-release
+
+- Add an exact fingerprint profile for the executable inspected on October 10. Retain the previous supported executable profile.
+- Update the camera hook, mode mirror, native FOV setter, scratch camera, render vtable, and global-override read address together.
+- Keep the state observer and projection-builder addresses, native ABI, record offsets, camera behavior, and defaults unchanged.
+- Add read-only executable verification for exact signatures, camera-prologue uniqueness, native function boundaries, section access, and native references.
+- Run that verification during source-installation preflight. Never admit an executable by a new hash alone.
+- Add native profile-selection and owned-PE regressions, including mixed-profile address rejection and unknown-build rejection.
+- Preserve calibration, menu settings, safety INI, and rollback receipts during local installation.
+- Record explicit user confirmation that first-person operation works on the updated executable, followed by a request to merge into main.
+- Live logs record updated-profile hook installation, eligible records, completed on/off double-taps, and protected-menu detection.
+- Custom FOV was disabled during this test. Updated-build FOV application remains unconfirmed; v0.3.3 remains a pre-release.
+- Preserve broader traversal, combat, focus, clipping, and scripted-state testing limits. Automated and static checks do not establish live coverage.
+
 ## 0.3.2 — wall traversal and confirmed camera features
 
 - Allow first-person activation during wall traversal. Validate input-pair spacing rather than requiring world-Y alignment.

@@ -2,6 +2,7 @@
 #include "state_snapshot.hpp"
 #include "camera_geometry.hpp"
 #include "camera_transition.hpp"
+#include "game_layout.hpp"
 #include <clocale>
 #include <cmath>
 #include <array>
@@ -361,6 +362,27 @@ void transition_tests() {
         CHECK(!camera_transition_allowed(s,c));
     }
 }
+void layout_tests() {
+    using namespace layout;
+    const auto* previous = select_build("4f6596b08bb5bc7fe4150cf5b9f71d7bae87eea02d66627c03a5e05ffe84ea62");
+    const auto* updated = select_build("9f56611d767c9227a8a1b250c01acf9478b50933c65f86a1e044fcc53df67cb1");
+    CHECK(previous && updated && previous != updated);
+    CHECK(previous->camera_update_rva == 0x207BF90 && previous->mode_rva == 0x5D05058);
+    CHECK(previous->fov_setter_rva == 0x3228200 && previous->render_camera_rva == 0x5D047C0);
+    CHECK(previous->render_vtable_rva == 0x4835370 && previous->override_flag_rva == 0x5D04F90);
+    CHECK(updated->camera_update_rva == 0x207BFA0 && updated->mode_rva == 0x5C24088);
+    CHECK(updated->fov_setter_rva == 0x32285C0 && updated->render_camera_rva == 0x5C23AC0);
+    CHECK(updated->render_vtable_rva == 0x478B4B0 && updated->override_flag_rva == 0x5C237E8);
+    for (const auto* build : {previous, updated}) {
+        CHECK(build->mirror_rva == 0x17D8E10 && build->projection_builder_rva == 0x1BD5660);
+        CHECK(build->mode_setter_rva == 0x1BCEC30 && build->projection_caller_rva == 0x1BD5240);
+    }
+    CHECK(!select_build(""));
+    CHECK(!select_build("unsupported"));
+    CHECK(!select_build("9f56611d767c9227a8a1b250c01acf9478b50933c65f86a1e044fcc53df67cb0"));
+    CHECK(!select_build(std::string(supported_hash) + " "));
+    CHECK(!select_build(std::string(supported_hash).substr(0, 63)));
+}
 void config_tests() {
     CHECK(valid(Settings{}));
     CHECK(parse_settings("[Settings]\ntransition_ms=0\nfirst_person_fov=110\nfirst_person_fov_enabled=0")->first_person_fov==110);
@@ -402,7 +424,7 @@ void config_tests() {
 }
 }
 int main() {
-    try { detector_tests(); policy_tests(); config_tests(); snapshot_tests(); geometry_tests(); traversal_geometry_tests(); transition_tests(); }
+    try { detector_tests(); policy_tests(); config_tests(); snapshot_tests(); geometry_tests(); traversal_geometry_tests(); transition_tests(); layout_tests(); }
     catch (const std::exception& e) { std::cerr << e.what() << '\n'; return EXIT_FAILURE; }
     std::cout << checks << " checks passed\n";
 }
