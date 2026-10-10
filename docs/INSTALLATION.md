@@ -48,7 +48,7 @@ Version 0.3.3 remains a **pre-release**: the user confirmed first-person operati
 
 | Executable | SHA-256 | Size | Live validation |
 | --- | --- | --- | --- |
-| Previous build | `4f6596b08bb5bc7fe4150cf5b9f71d7bae87eea02d66627c03a5e05ffe84ea62` | 100,390,832 bytes | Camera, traversal, transitions, and FOV confirmed on 0.3.2 |
+| Previous build | `4f6596b08bb5bc7fe4150cf5b9f71d7bae87eea02d66627c03a5e05ffe84ea62` | 100,390,832 bytes | Camera, traversal, transitions, and FOV confirmed live; those features ship in 0.3.3 (0.3.2 was never published) |
 | Updated build, inspected October 10 | `9f56611d767c9227a8a1b250c01acf9478b50933c65f86a1e044fcc53df67cb1` | 99,470,256 bytes | User-confirmed first-person operation and logged manual toggles; custom FOV unconfirmed |
 
 The exact hash, not the size alone, determines support. These fingerprints identify `CONTROLResonant.exe`.
@@ -91,7 +91,7 @@ Combat clears first-person intent. A new double-tap after combat is expected, no
 Protected menus and unsupported camera records can also prevent writes.
 
 **Camera transition duration** defaults to 180 ms. **First-person horizontal FOV** defaults to 100°.
-Version 0.3.2 permits first-person activation during wall traversal and rotates height/side calibration with the input pair.
+First-person activation is permitted during wall traversal; height/side calibration rotates with the input pair.
 Disable **Custom first-person FOV** to retain native FOV without disabling smooth position transitions.
 Set transition duration to `0` for immediate manual toggles. Combat, focus loss, and protected-state returns remain immediate.
 Changing settings clears intent; leave the menu and double-tap again.

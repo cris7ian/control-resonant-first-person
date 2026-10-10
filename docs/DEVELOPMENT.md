@@ -33,7 +33,7 @@ For camera changes, test a wall behind the player, walking, pitching, stairs, bo
 For traversal changes, test floor-to-wall entry, toggling while wall-walking, looking along local up, and returning to the floor.
 Stable 0.3.0 retains native FOV. The user confirmed corrected 0.3.1 transitions and FOV in live play.
 The original installed preview logged no successful FOV writes. After the lifetime fix, live telemetry recorded matched writes for 100° and 120° settings.
-The user then confirmed corrected FOV and wall traversal. Version 0.3.2 includes these live-tested features without experimental labels.
+The user then confirmed corrected FOV and wall traversal. These live-tested features dropped experimental labels. The prepared 0.3.2 was never published; its changes shipped in 0.3.3.
 The traversal test retained eligible records through exploration/story transitions and recorded matched 100° FOV writes.
 One lens rejection retained native FOV without disabling placement. Detailed geometry was disabled in that test.
 Do not claim full traversal geometry coverage from those heartbeats alone; combine telemetry with the user's explicit confirmation.
@@ -109,7 +109,7 @@ The full native camera ABI and exclusive player-camera ownership remain provisio
 The hook forwards ten observed integer/pointer argument slots and preserves the original return value.
 It runs the native update first, including native collision/history, then writes only 12 bytes of final output position.
 It does not change direction, visibility, native camera history, or global collision settings.
-Versions 0.3.1 and 0.3.2 use an independent original-first render projection hook; it never writes CameraView FOV or global tweaks.
+Versions since 0.3.1 use an independent original-first render projection hook; it never writes CameraView FOV or global tweaks.
 
 Placement uses a validated, matched input0 record. It is a stable player-following candidate, not a proven head attachment.
 The input/output indices, input pointer, coordinate plausibility, direction, private writable output, freshness, foreground, and native mode are checked.

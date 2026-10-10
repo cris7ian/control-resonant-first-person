@@ -37,7 +37,7 @@ Do not install BetterCamera alongside this camera hook.
 
 Keep existing `ModMenuConfig/exploration_first_person.ini` settings during updates.
 Missing settings use the compiled defaults; the descriptor uses the same defaults.
-Version 0.3.2 includes user-confirmed wall traversal, 180 ms eased manual toggles, and optional 100° horizontal first-person FOV.
+Version 0.3.3 includes wall traversal, 180 ms eased manual toggles, and optional 100° horizontal first-person FOV.
 Preserve existing settings, including the legacy `prototype_distance` key. Missing transition/FOV keys use the compiled/menu defaults.
 The descriptor name is Exploration First Person and its version matches CMake without a preview suffix.
 Current baseline: distance −6.35, height −0.15, side 0, fine forward −0.05; RS and keyboard K double-taps.
@@ -65,6 +65,6 @@ Check `Scoped FOV` logs for a matching positioned render camera. FOV failure mus
 Wall traversal, transitions, and scoped FOV are user-confirmed on the previous executable. Its telemetry recorded matched writes for 100° and 120° settings.
 Updated-executable first-person operation is user-confirmed in 0.3.3, with logged on/off toggles and protected-menu detection.
 Custom FOV was disabled; require updated-executable FOV confirmation before calling 0.3.3 stable. Broader traversal/combat/focus coverage remains limited.
-Version 0.3.2 removes experimental labels. It does not establish universal native-effect, clipping, or scripted-state coverage.
+Experimental labels are removed. This does not establish universal native-effect, clipping, or scripted-state coverage.
 Before clearing runtime logs, review and archive them under ignored analysis/ with the game closed.
 Retain previous published tags and assets. Release preparation creates a draft unless publication is requested.

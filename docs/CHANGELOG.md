@@ -3,6 +3,7 @@
 ## 0.3.3 — updated-executable compatibility pre-release
 
 - Add an exact fingerprint profile for the executable inspected on October 10. Retain the previous supported executable profile.
+- Publish the previously prepared 0.3.2 wall-traversal changes; 0.3.2 itself was never tagged or released.
 - Update the camera hook, mode mirror, native FOV setter, scratch camera, render vtable, and global-override read address together.
 - Keep the state observer and projection-builder addresses, native ABI, record offsets, camera behavior, and defaults unchanged.
 - Add read-only executable verification for exact signatures, camera-prologue uniqueness, native function boundaries, section access, and native references.
@@ -25,6 +26,7 @@
 - Add rotated-placement, singular-view, invalid-pair, floor-return, FOV-match, safety-return, and stable-release metadata regressions.
 - Correct the activation log to include eligible-state resume, not only double-taps. Remove stale FOV/traversal retesting notices.
 - Retain known limits: no separate eye collision, no head/body hiding, and incomplete active-dialogue or scripted-state exclusion.
+- 0.3.2 was prepared but never tagged or published. Its changes shipped in the 0.3.3 release.
 
 ## 0.3.1 — transitions and experimental FOV pre-release
 
